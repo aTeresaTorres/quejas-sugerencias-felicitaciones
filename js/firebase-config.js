@@ -18,3 +18,6 @@ const storage = firebase.storage();
 
 // Configuración para timestamps
 db.settings({ timestampsInSnapshots: true });
+
+// Configuración de persistencia de sesión
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
