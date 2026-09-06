@@ -5,11 +5,10 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
     const nombre = document.getElementById('nombre').value.trim();
     const email = document.getElementById('email').value.trim();
     const telefono = document.getElementById('telefono').value.trim();
-    const asunto = document.getElementById('asunto').value;
     const mensaje = document.getElementById('mensaje').value.trim();
     
     // VALIDACIONES
-    if (!nombre || !asunto || !mensaje) {
+    if (!nombre || !mensaje) {
         alert('Por favor, completa todos los campos obligatorios');
         return;
     }
@@ -20,17 +19,21 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
         return;
     }
     
-    // Validar email si se proporcionó
-    if (email && !validarEmail(email)) {
-        alert('Por favor, ingresa un correo electrónico válido (ejemplo: usuario@dominio.com)');
-        return;
+    // ✅ VALIDACIÓN MEJORADA DE EMAIL
+    if (email) {
+        const emailValido = await validarEmailReal(email);
+        if (!emailValido) {
+            alert('❌ El correo electrónico no parece ser válido o no existe. Por favor, verifica la dirección.');
+            return;
+        }
     }
     
-    // Validar teléfono si se proporcionó
+    // ✅ VALIDACIÓN MEJORADA DE TELÉFONO
     if (telefono) {
         const telefonoLimpio = telefono.replace(/\s/g, '');
-        if (!validarTelefono(telefonoLimpio)) {
-            alert('Por favor, ingresa un número de teléfono válido de 10 dígitos (ejemplo: 5512345678)');
+        const telefonoValido = await validarTelefonoReal(telefonoLimpio);
+        if (!telefonoValido) {
+            alert('❌ El número de teléfono no parece ser válido. Por favor, verifica el número (10 dígitos).');
             return;
         }
     }
@@ -43,7 +46,7 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
     const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
     const folio = `BQ-${year}${month}${day}-${random}`;
     
-    // PREPARAR DATOS
+    // PREPARAR DATOS (SIN asunto, lo asignará el admin)
     const ticketData = {
         folio: folio,
         nombre: nombre,
@@ -51,7 +54,8 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
         tipoContacto: email ? 'email' : 'telefono',
         email: email || null,
         telefono: telefono || null,
-        asunto: asunto,
+        // ❌ ELIMINADO: asunto (ya no lo selecciona el usuario)
+        asunto: 'pendiente_clasificar', // Valor por defecto
         mensaje: mensaje,
         estado: 'pendiente',
         dependencia: 'sin_asignar',
@@ -77,13 +81,74 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
     }
 });
 
-// ============ FUNCIONES DE VALIDACIÓN ============
-function validarEmail(email) {
+// ============ VALIDACIÓN DE EMAIL REAL ============
+async function validarEmailReal(email) {
+    // 1. Validar formato básico
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!re.test(email)) {
+        console.log('❌ Formato de email inválido');
+        return false;
+    }
+    
+    // 2. Verificar que el dominio tenga registros MX (exista)
+    try {
+        const dominio = email.split('@')[1];
+        const respuesta = await fetch(`https://api.mailcheck.ai/domain/${dominio}`);
+        const data = await respuesta.json();
+        
+        // Si el dominio tiene registros MX, es válido
+        if (data.mx) {
+            console.log('✅ Dominio válido con MX records');
+            return true;
+        } else {
+            console.log('❌ Dominio sin MX records');
+            return false;
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudo verificar el dominio, pero el formato es válido');
+        // Si falla la verificación, al menos validamos el formato
+        return true;
+    }
+}
+
+// ============ VALIDACIÓN DE TELÉFONO REAL ============
+async function validarTelefonoReal(telefono) {
+    // 1. Validar formato (10 dígitos para México)
+    const re = /^\d{10}$/;
+    if (!re.test(telefono)) {
+        console.log('❌ Formato de teléfono inválido (deben ser 10 dígitos)');
+        return false;
+    }
+    
+    // 2. Verificar que el número exista usando una API gratuita
+    try {
+        // Usamos una API gratuita para verificar números (limitada)
+        const respuesta = await fetch(`https://api.veriphone.io/v2/verify?phone=%2B52${telefono}&key=TU_API_KEY_VERIPHONE`);
+        const data = await respuesta.json();
+        
+        if (data && data.phone_valid) {
+            console.log('✅ Teléfono válido:', data.country);
+            return true;
+        } else {
+            console.log('❌ Teléfono inválido');
+            return false;
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudo verificar el teléfono, pero el formato es válido');
+        // Si falla la API, al menos validamos el formato
+        return true;
+    }
+}
+
+// ============ VALIDACIÓN ALTERNATIVA (SIN API) ============
+// Esta versión solo valida formato pero es más confiable (no depende de APIs externas)
+
+function validarEmailFormato(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
 }
 
-function validarTelefono(telefono) {
+function validarTelefonoFormato(telefono) {
     const re = /^\d{10}$/;
     return re.test(telefono.replace(/\s/g, ''));
 }
@@ -111,16 +176,26 @@ function mostrarConfirmacion(data) {
             <p><strong>Nombre:</strong> ${data.nombre}</p>
             <p><strong>Contacto:</strong> ${data.contacto}</p>
             <p><strong>Tipo de contacto:</strong> ${data.tipoContacto === 'email' ? 'Correo electrónico' : 'Teléfono'}</p>
-            <p><strong>Asunto:</strong> ${data.asunto.charAt(0).toUpperCase() + data.asunto.slice(1)}</p>
             <p><strong>Mensaje:</strong></p>
             <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin: 10px 0;">
                 ${data.mensaje}
             </div>
             <p><strong>Fecha y hora:</strong> ${fechaStr}</p>
             <hr>
-            <p style="font-size: 0.9em; color: #666;">Guarda este recibo para cualquier seguimiento</p>
+            <p style="font-size: 0.9em; color: #666;">Tu asunto será clasificado por nuestro equipo de administración</p>
         </div>
     `;
+}
+
+// ============ VOLVER AL FORMULARIO ============
+function volverAlFormulario() {
+    document.getElementById('quejaForm').style.display = 'block';
+    document.getElementById('quejaForm').reset();
+    document.getElementById('confirmacion').style.display = 'none';
+    document.querySelector('.container').scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+    });
 }
 
 // ============ GENERAR PDF ============
@@ -136,7 +211,6 @@ function generarPDF() {
         pagebreak:    { mode: 'avoid-all' }
     };
     
-    // Mostrar loading
     const btn = document.querySelector('[onclick="generarPDF()"]');
     btn.textContent = '⏳ Generando PDF...';
     btn.disabled = true;
@@ -153,35 +227,47 @@ function generarPDF() {
 }
 
 // ============ VALIDACIÓN EN TIEMPO REAL ============
-// Mostrar ayuda para el teléfono
+// Teléfono: solo números
 document.getElementById('telefono').addEventListener('input', function(e) {
-    // Solo permitir números
     this.value = this.value.replace(/\D/g, '');
     if (this.value.length > 10) {
         this.value = this.value.slice(0, 10);
     }
 });
 
-// Formatear teléfono mientras se escribe (opcional)
+// Formatear teléfono al perder el foco
 document.getElementById('telefono').addEventListener('blur', function() {
     if (this.value.length === 10) {
-        // Formato: 55 1234 5678
         this.value = this.value.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
     }
 });
 
-// ============ VOLVER AL FORMULARIO ============
-function volverAlFormulario() {
-    // Mostrar el formulario nuevamente
-    document.getElementById('quejaForm').style.display = 'block';
-    document.getElementById('quejaForm').reset();
-    
-    // Ocultar la confirmación
-    document.getElementById('confirmacion').style.display = 'none';
-    
-    // Hacer scroll al inicio del formulario
-    document.querySelector('.container').scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-    });
-}
+// Validación visual de email en tiempo real
+document.getElementById('email').addEventListener('blur', function() {
+    const email = this.value.trim();
+    if (email && !validarEmailFormato(email)) {
+        this.style.borderColor = '#dc3545';
+        this.style.backgroundColor = '#fff0f0';
+    } else if (email) {
+        this.style.borderColor = '#28a745';
+        this.style.backgroundColor = '#f0fff0';
+    } else {
+        this.style.borderColor = '#e1e5eb';
+        this.style.backgroundColor = 'white';
+    }
+});
+
+// Validación visual de teléfono en tiempo real
+document.getElementById('telefono').addEventListener('blur', function() {
+    const telefono = this.value.replace(/\s/g, '');
+    if (telefono && !validarTelefonoFormato(telefono)) {
+        this.style.borderColor = '#dc3545';
+        this.style.backgroundColor = '#fff0f0';
+    } else if (telefono) {
+        this.style.borderColor = '#28a745';
+        this.style.backgroundColor = '#f0fff0';
+    } else {
+        this.style.borderColor = '#e1e5eb';
+        this.style.backgroundColor = 'white';
+    }
+});

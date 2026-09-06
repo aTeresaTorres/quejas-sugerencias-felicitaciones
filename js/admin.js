@@ -213,6 +213,20 @@ async function verTicket(id) {
         
         <div class="acciones-ticket">
             <h3>⚙️ Acciones</h3>
+            
+            <!-- ASIGNAR ASUNTO (nuevo) -->
+            <div class="form-group">
+                <label>Asignar clasificación:</label>
+                <select id="asignarAsunto">
+                    <option value="queja" ${ticket.asunto === 'queja' ? 'selected' : ''}>⚠️ Queja</option>
+                    <option value="sugerencia" ${ticket.asunto === 'sugerencia' ? 'selected' : ''}>💡 Sugerencia</option>
+                    <option value="felicitacion" ${ticket.asunto === 'felicitacion' ? 'selected' : ''}>🌟 Felicitación</option>
+                    <option value="pendiente_clasificar" ${ticket.asunto === 'pendiente_clasificar' ? 'selected' : ''}>⏳ Pendiente de clasificar</option>
+                </select>
+                <button onclick="asignarAsunto('${ticket.id}')" class="btn-success">Asignar</button>
+            </div>
+            
+            <!-- CAMBIAR ESTADO (existente) -->
             <div class="form-group">
                 <label>Cambiar estado:</label>
                 <select id="cambiarEstado">
@@ -402,3 +416,23 @@ document.addEventListener('keydown', function(event) {
         cerrarModal();
     }
 });
+
+// ============ FUNCIÓN PARA ASIGNAR ASUNTO ============
+async function asignarAsunto(id, nuevoAsunto) {
+    if (!confirm(`¿Asignar el asunto como "${nuevoAsunto}"?`)) return;
+    
+    try {
+        await db.collection('tickets').doc(id).update({
+            asunto: nuevoAsunto,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert('✅ Asunto asignado correctamente');
+        cerrarModal();
+        cargarTickets();
+        
+    } catch (error) {
+        console.error('Error al asignar asunto:', error);
+        alert('❌ Error al asignar el asunto: ' + error.message);
+    }
+}
