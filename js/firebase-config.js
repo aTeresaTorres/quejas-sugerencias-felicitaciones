@@ -11,6 +11,9 @@ const firebaseConfig = {
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 
+// ✅ IMPORTANTE: Verificar que Firebase esté inicializado antes de usar
+console.log('🔥 Firebase inicializado:', firebase.app().name);
+
 // Exportar para usar en otros archivos
 const db = firebase.firestore();
 const auth = firebase.auth();
