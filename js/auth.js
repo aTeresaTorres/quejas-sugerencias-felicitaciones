@@ -1,4 +1,22 @@
-// ============ LOGIN MEJORADO CON DEPURACIÓN ============
+// ============ ESPERAR A QUE FIREBASE ESTÉ LISTO ============
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 Página cargada, verificando Firebase...');
+    
+    // Verificar que auth esté definido
+    if (typeof auth === 'undefined') {
+        console.error('❌ auth no está definido. Verifica firebase-config.js');
+        const errorDiv = document.getElementById('mensajeError');
+        if (errorDiv) {
+            errorDiv.textContent = '❌ Error de configuración: Firebase no está cargado. Recarga la página.';
+            errorDiv.style.display = 'block';
+        }
+        return;
+    }
+    
+    console.log('✅ Firebase Auth disponible');
+});
+
+// ============ LOGIN ============
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -23,7 +41,12 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     btn.disabled = true;
     
     try {
-        console.log('Intentando login con:', email);
+        console.log('🔐 Intentando login con:', email);
+        
+        // Verificar que auth existe
+        if (typeof auth === 'undefined') {
+            throw new Error('Firebase Auth no está disponible. Recarga la página.');
+        }
         
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         console.log('✅ Login exitoso:', userCredential.user.email);
@@ -81,23 +104,38 @@ function mostrarError(mensaje) {
     errorDiv.style.marginTop = '15px';
 }
 
-// ============ VERIFICAR SESIÓN CON DEPURACIÓN ============
-auth.onAuthStateChanged(user => {
-    console.log('🔍 Estado de autenticación:', user ? `Usuario ${user.email}` : 'No autenticado');
-    
-    if (user) {
-        // Si está en login.html y ya está autenticado, redirigir a admin
-        const currentPath = window.location.pathname;
-        if (currentPath.includes('login.html') || currentPath === '/' || currentPath === '/index.html') {
-            console.log('🔄 Redirigiendo a admin.html');
-            window.location.href = 'admin.html';
-        }
-    } else {
-        // Si NO está autenticado y está en admin.html, redirigir a login
-        const currentPath = window.location.pathname;
-        if (currentPath.includes('admin.html')) {
-            console.log('🔄 Redirigiendo a login.html');
-            window.location.href = 'login.html';
-        }
+// ============ VERIFICAR SESIÓN ============
+// Esperar a que auth esté disponible
+function verificarSesion() {
+    if (typeof auth === 'undefined') {
+        console.warn('⏳ Esperando que Firebase Auth esté listo...');
+        setTimeout(verificarSesion, 500);
+        return;
     }
+    
+    auth.onAuthStateChanged(user => {
+        console.log('🔍 Estado de autenticación:', user ? `Usuario ${user.email}` : 'No autenticado');
+        
+        if (user) {
+            // Si está en login.html y ya está autenticado, redirigir a admin
+            const currentPath = window.location.pathname;
+            if (currentPath.includes('login.html') || currentPath === '/' || currentPath === '/index.html') {
+                console.log('🔄 Redirigiendo a admin.html');
+                window.location.href = 'admin.html';
+            }
+        } else {
+            // Si NO está autenticado y está en admin.html, redirigir a login
+            const currentPath = window.location.pathname;
+            if (currentPath.includes('admin.html')) {
+                console.log('🔄 Redirigiendo a login.html');
+                window.location.href = 'login.html';
+            }
+        }
+    });
+}
+
+// Iniciar verificación cuando la página cargue
+document.addEventListener('DOMContentLoaded', function() {
+    // Pequeño delay para asegurar que firebase-config.js cargó
+    setTimeout(verificarSesion, 300);
 });

@@ -23,13 +23,73 @@
             <button type="submit" style="width: 100%;">Ingresar</button>
         </form>
         
-        <div id="mensajeError" style="color: red; margin-top: 15px; display: none;"></div>
+        <div id="mensajeError" style="display: none;"></div>
+        
+        <!-- Información de depuración -->
+        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; font-size: 0.9em;">
+            <p id="statusFirebase" style="margin: 0;">🔍 Verificando Firebase...</p>
+        </div>
     </div>
 
-    <!-- SCRIPTS CDN -->
+    <!-- ============================================ -->
+    <!-- 1️⃣ PRIMERO: Firebase Core (siempre primero)  -->
+    <!-- ============================================ -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    
+    <!-- ============================================ -->
+    <!-- 2️⃣ SEGUNDO: Servicios de Firebase que uses    -->
+    <!-- ============================================ -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    
+    <!-- ============================================ -->
+    <!-- 3️⃣ TERCERO: Tu configuración de Firebase      -->
+    <!-- ============================================ -->
     <script src="js/firebase-config.js"></script>
+    
+    <!-- ============================================ -->
+    <!-- 4️⃣ CUARTO: Tu lógica de autenticación        -->
+    <!-- ============================================ -->
     <script src="js/auth.js"></script>
+    
+    <!-- ============================================ -->
+    <!-- 5️⃣ QUINTO: Script de verificación (opcional) -->
+    <!-- ============================================ -->
+    <script>
+        // Verificar que todo esté cargado correctamente
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusEl = document.getElementById('statusFirebase');
+            
+            try {
+                // Verificar Firebase
+                if (typeof firebase === 'undefined') {
+                    statusEl.innerHTML = '❌ Firebase no está cargado';
+                    statusEl.style.color = '#dc3545';
+                    return;
+                }
+                
+                // Verificar Auth
+                if (typeof firebase.auth === 'undefined') {
+                    statusEl.innerHTML = '❌ Firebase Auth no está cargado. Verifica los scripts.';
+                    statusEl.style.color = '#dc3545';
+                    return;
+                }
+                
+                // Verificar que la app esté inicializada
+                try {
+                    const app = firebase.app();
+                    statusEl.innerHTML = `✅ Firebase cargado correctamente (${app.name})`;
+                    statusEl.style.color = '#28a745';
+                } catch (e) {
+                    statusEl.innerHTML = '❌ Firebase no inicializado. Revisa firebase-config.js';
+                    statusEl.style.color = '#dc3545';
+                }
+            } catch (error) {
+                statusEl.innerHTML = `❌ Error: ${error.message}`;
+                statusEl.style.color = '#dc3545';
+            }
+        });
+    </script>
 </body>
 </html>

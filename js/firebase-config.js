@@ -17,10 +17,16 @@ console.log('🔥 Firebase inicializado:', firebase.app().name);
 // Exportar para usar en otros archivos
 const db = firebase.firestore();
 const auth = firebase.auth();
-const storage = firebase.storage();
 
-// Configuración para timestamps
+// Configuración de Firestore
 db.settings({ timestampsInSnapshots: true });
 
-// Configuración de persistencia de sesión
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+// Configurar persistencia de autenticación
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => console.log('✅ Persistencia de auth configurada'))
+    .catch((error) => console.error('❌ Error en persistencia:', error));
+
+// Exportar para usar en otros archivos
+console.log('✅ Servicios de Firebase inicializados:');
+console.log('  📁 Firestore:', !!db);
+console.log('  🔐 Auth:', !!auth);
