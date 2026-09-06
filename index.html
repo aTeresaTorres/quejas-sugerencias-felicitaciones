@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buzón de Quejas</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📬 Buzón de Quejas, Sugerencias y Felicitaciones</h1>
+        
+        <!-- FORMULARIO -->
+        <form id="quejaForm">
+            <div class="form-group">
+                <label for="nombre">Nombre completo *</label>
+                <input type="text" id="nombre" required>
+            </div>
+
+            <div class="form-group">
+                <label>Información de contacto *</label>
+                <div class="contact-group">
+                    <input type="email" id="email" placeholder="Correo electrónico">
+                    <span>o</span>
+                    <input type="tel" id="telefono" placeholder="Teléfono (10 dígitos)">
+                </div>
+                <small>Debes proporcionar al menos un medio de contacto válido</small>
+            </div>
+
+            <div class="form-group">
+                <label for="asunto">Asunto *</label>
+                <select id="asunto" required>
+                    <option value="">Selecciona...</option>
+                    <option value="queja">Queja</option>
+                    <option value="sugerencia">Sugerencia</option>
+                    <option value="felicitacion">Felicitación</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="mensaje">Mensaje *</label>
+                <textarea id="mensaje" rows="5" required></textarea>
+            </div>
+
+            <button type="submit" id="btnEnviar">Enviar</button>
+        </form>
+
+        <!-- CONFIRMACIÓN -->
+        <div id="confirmacion" style="display:none;">
+            <h2>✅ ¡Asunto registrado!</h2>
+            <div id="recibo"></div>
+            <button onclick="generarPDF()">📄 Guardar recibo en PDF</button>
+            
+            <div class="info-contacto">
+                <h3>📌 Tu asunto será atendido a la brevedad</h3>
+                <p>Puedes contactarnos en:</p>
+                <p>📧 administracion@tuorganizacion.com</p>
+                <p>📞 (55) 1234-5678</p>
+                <p>🕐 Horario: Lunes a Viernes 9:00 - 18:00</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS CDN (sin npm) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- TU CÓDIGO -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/form.js"></script>
+</body>
+</html>

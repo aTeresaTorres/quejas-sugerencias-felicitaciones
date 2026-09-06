@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración - Buzón</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- HEADER -->
+        <header>
+            <h1>📊 Panel de Administración</h1>
+            <div>
+                <span id="userEmail" style="margin-right: 15px; color: #666;"></span>
+                <button id="btnLogout" class="btn-danger">Cerrar sesión</button>
+            </div>
+        </header>
+
+        <!-- ESTADÍSTICAS RÁPIDAS -->
+        <section class="stats">
+            <div class="stat-card">
+                <span class="stat-number" id="totalTickets">0</span>
+                <span class="stat-label">Total</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="pendientes">0</span>
+                <span class="stat-label">Pendientes</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="enRevision">0</span>
+                <span class="stat-label">En revisión</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="resueltos">0</span>
+                <span class="stat-label">Resueltos</span>
+            </div>
+        </section>
+
+        <!-- FILTROS -->
+        <section class="filtros">
+            <h3>🔍 Filtros</h3>
+            <div class="filtros-grid">
+                <div class="form-group">
+                    <label>Periodo</label>
+                    <input type="month" id="filtroMes">
+                    <small>o rango específico:</small>
+                    <input type="date" id="filtroDesde" placeholder="Desde">
+                    <input type="date" id="filtroHasta" placeholder="Hasta">
+                </div>
+                <div class="form-group">
+                    <label>Asunto</label>
+                    <select id="filtroAsunto">
+                        <option value="">Todos</option>
+                        <option value="queja">Queja</option>
+                        <option value="sugerencia">Sugerencia</option>
+                        <option value="felicitacion">Felicitación</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Dependencia</label>
+                    <select id="filtroDependencia">
+                        <option value="">Todas</option>
+                        <option value="sistemas">💻 Sistemas</option>
+                        <option value="recursos_humanos">👥 Recursos Humanos</option>
+                        <option value="finanzas">💰 Finanzas</option>
+                        <option value="operaciones">⚙️ Operaciones</option>
+                        <option value="atencion_cliente">📞 Atención al Cliente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="filtroEstado">
+                        <option value="">Todos</option>
+                        <option value="pendiente">⏳ Pendiente</option>
+                        <option value="en_revision">🔍 En revisión</option>
+                        <option value="resuelto">✅ Resuelto</option>
+                        <option value="cerrado">🔒 Cerrado</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <button id="btnAplicarFiltros" style="width: 100%;">Aplicar filtros</button>
+                    <button id="btnLimpiarFiltros" style="width: 100%; background: #6c757d; margin-left: 10px;">Limpiar</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- LISTA DE TICKETS -->
+        <section class="tickets-list">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>📋 Tickets registrados</h3>
+                <button id="btnRecargar" style="background: #28a745;">🔄 Recargar</button>
+            </div>
+            <div id="ticketsContainer">
+                <p style="text-align: center; color: #999;">Cargando tickets...</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL PARA VER/RESPONDER TICKET -->
+    <div id="modalTicket" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="detalleTicket"></div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS CDN (sin npm) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    
+    <!-- TU CÓDIGO -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

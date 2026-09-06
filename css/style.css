@@ -1,0 +1,211 @@
+/* ============ RESET Y BASE ============ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #f0f2f5;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+h1 {
+    color: #1a1a2e;
+    margin-bottom: 30px;
+    text-align: center;
+    font-size: 2em;
+}
+
+h2 {
+    color: #1a1a2e;
+    margin-bottom: 20px;
+}
+
+/* ============ FORMULARIO ============ */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+.contact-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.contact-group input {
+    flex: 1;
+}
+
+.contact-group span {
+    color: #666;
+    font-weight: bold;
+    padding: 0 5px;
+}
+
+small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 0.85em;
+}
+
+/* ============ BOTONES ============ */
+button {
+    background: #007bff;
+    color: white;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+button:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============ CONFIRMACIÓN ============ */
+#confirmacion {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
+}
+
+.recibo-card {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.recibo-card h3 {
+    color: #1a1a2e;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.recibo-card p {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.recibo-card hr {
+    margin: 20px 0;
+    border: none;
+    border-top: 1px solid #e1e5eb;
+}
+
+.info-contacto {
+    margin-top: 30px;
+    padding: 20px;
+    background: #e8f4fd;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.info-contacto h3 {
+    color: #1a1a2e;
+    margin-bottom: 10px;
+}
+
+.info-contacto p {
+    margin: 5px 0;
+}
+
+/* ============ LOGIN ============ */
+.login-container {
+    max-width: 400px !important;
+    margin-top: 50px;
+}
+
+.login-container h2 {
+    text-align: center;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        padding: 20px;
+    }
+    
+    h1 {
+        font-size: 1.5em;
+    }
+    
+    .contact-group {
+        flex-direction: column;
+    }
+    
+    .contact-group span {
+        padding: 5px 0;
+    }
+    
+    button {
+        width: 100%;
+    }
+}
