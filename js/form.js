@@ -123,7 +123,7 @@ async function validarTelefonoReal(telefono) {
     // 2. Verificar que el número exista usando una API gratuita
     try {
         // Usamos una API gratuita para verificar números (limitada)
-        const respuesta = await fetch(`https://api.veriphone.io/v2/verify?phone=%2B52${telefono}&key=TU_API_KEY_VERIPHONE`);
+        const respuesta = await fetch(`https://api.veriphone.io/v2/verify?phone=%2B52${telefono}&key=5B923F14B26444A89EC40AA5D437E3A3`);
         const data = await respuesta.json();
         
         if (data && data.phone_valid) {
