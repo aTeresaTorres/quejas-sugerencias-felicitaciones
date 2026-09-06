@@ -169,3 +169,19 @@ document.getElementById('telefono').addEventListener('blur', function() {
         this.value = this.value.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
     }
 });
+
+// ============ VOLVER AL FORMULARIO ============
+function volverAlFormulario() {
+    // Mostrar el formulario nuevamente
+    document.getElementById('quejaForm').style.display = 'block';
+    document.getElementById('quejaForm').reset();
+    
+    // Ocultar la confirmación
+    document.getElementById('confirmacion').style.display = 'none';
+    
+    // Hacer scroll al inicio del formulario
+    document.querySelector('.container').scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+    });
+}
