@@ -2,45 +2,53 @@
 document.getElementById('quejaForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    const btn = this.querySelector('button[type="submit"]');
+    const textoOriginal = btn.textContent;
+    btn.textContent = '⏳ Enviando...';
+    btn.disabled = true;
+    
     const nombre = document.getElementById('nombre').value.trim();
     const email = document.getElementById('email').value.trim();
     const telefono = document.getElementById('telefono').value.trim();
     const mensaje = document.getElementById('mensaje').value.trim();
     
-    // VALIDACIONES
     if (!nombre || !mensaje) {
         alert('Por favor, completa todos los campos obligatorios');
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
         return;
     }
     
-    // ✅ Validar que al menos un contacto esté presente
     if (!email && !telefono) {
         alert('Debes proporcionar al menos un medio de contacto (correo o teléfono)');
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
         return;
     }
     
-    // ✅ Validar email si se proporcionó
     let emailValido = false;
     if (email) {
         emailValido = validarEmailFormato(email);
         if (!emailValido) {
             alert('❌ El correo electrónico no tiene un formato válido. Ejemplo: usuario@dominio.com');
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
             return;
         }
     }
     
-    // ✅ Validar teléfono si se proporcionó
     let telefonoValido = false;
     if (telefono) {
         const telefonoLimpio = telefono.replace(/\s/g, '');
         telefonoValido = validarTelefonoFormato(telefonoLimpio);
         if (!telefonoValido) {
             alert('❌ El número de teléfono debe ser válido y tener 10 dígitos. Ejemplo: 5512345678');
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
             return;
         }
     }
     
-    // GENERAR FOLIO
     const fecha = new Date();
     const year = fecha.getFullYear();
     const month = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -48,55 +56,52 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
     const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
     const folio = `BQ-${year}${month}${day}-${random}`;
     
-    // ✅ PREPARAR DATOS - Guardar AMBOS contactos si existen
     const ticketData = {
         folio: folio,
         nombre: nombre,
-        // ✅ Contacto principal (el que se usará para mostrar)
         contacto: email || telefono,
-        // ✅ Tipo de contacto principal
         tipoContacto: email ? 'email' : 'telefono',
-        // ✅ Guardar AMBOS contactos
         email: email || null,
         telefono: telefono || null,
-        // ✅ Indicar si tiene ambos
         tieneAmbos: !!(email && telefono),
         asunto: 'pendiente_clasificar',
         mensaje: mensaje,
         estado: 'pendiente',
         dependencia: 'sin_asignar',
-        fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp(),
-        respuestas: []
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+        respuestas: [],
+        historialSeguimiento: [],
+        enviosDependencia: [],
+        respuestasDependencia: [],
+        respuestasCiudadano: []
     };
     
     try {
-        // GUARDAR EN FIRESTORE
         const docRef = await db.collection('tickets').add(ticketData);
         console.log('Ticket guardado con ID:', docRef.id);
-        console.log('📧 Email:', email || 'No proporcionado');
-        console.log('📞 Teléfono:', telefono || 'No proporcionado');
-        console.log('📌 Ambos contactos:', ticketData.tieneAmbos ? 'Sí' : 'No');
         
-        // MOSTRAR CONFIRMACIÓN
         mostrarConfirmacion(ticketData);
         
-        // LIMPIAR FORMULARIO
         this.reset();
         
-        // Resetear estilos de validación
         document.getElementById('email').style.borderColor = '#e1e5eb';
         document.getElementById('email').style.backgroundColor = 'white';
         document.getElementById('telefono').style.borderColor = '#e1e5eb';
         document.getElementById('telefono').style.backgroundColor = 'white';
         
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
+        
     } catch (error) {
         console.error('Error al guardar:', error);
         alert('❌ Hubo un error al enviar tu asunto. Por favor, intenta de nuevo.\n\n' + error.message);
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
     }
 });
 
-// ============ MOSTRAR CONFIRMACIÓN (ACTUALIZADA) ============
+// ============ MOSTRAR CONFIRMACIÓN ============
 function mostrarConfirmacion(data) {
     document.getElementById('quejaForm').style.display = 'none';
     document.getElementById('confirmacion').style.display = 'block';
@@ -111,7 +116,6 @@ function mostrarConfirmacion(data) {
         hour12: true
     });
     
-    // ✅ Mostrar los contactos correctamente
     let contactosHTML = '';
     if (data.email && data.telefono) {
         contactosHTML = `
@@ -151,7 +155,7 @@ function mostrarConfirmacion(data) {
     `;
 }
 
-// ============ VALIDACIÓN DE EMAIL ============
+// ============ VALIDACIONES ============
 function validarEmailFormato(email) {
     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!re.test(email)) return false;
@@ -169,24 +173,16 @@ function validarEmailFormato(email) {
     return true;
 }
 
-// ============ VALIDACIÓN DE TELÉFONO (SIN API) ============
 function validarTelefonoFormato(telefono) {
     const limpio = telefono.replace(/\s/g, '').replace(/-/g, '');
     
-    // Debe ser exactamente 10 dígitos
     if (!/^\d{10}$/.test(limpio)) return false;
-    
-    // No puede ser un número repetido
     if (/^(\d)\1{9}$/.test(limpio)) return false;
-    
-    // No puede ser secuencial simple
     if (/^0123456789$/.test(limpio) || /^9876543210$/.test(limpio)) return false;
     
-    // Validar LADA (código de área) - México
     const lada = parseInt(limpio.substring(0, 2));
     if (lada < 20) return false;
     
-    // No puede ser números de emergencia
     const numerosInvalidos = ['911', '066', '089', '065'];
     if (numerosInvalidos.includes(limpio.substring(0, 3))) return false;
     
@@ -199,7 +195,6 @@ function volverAlFormulario() {
     document.getElementById('quejaForm').reset();
     document.getElementById('confirmacion').style.display = 'none';
     
-    // Resetear estilos de validación
     document.getElementById('email').style.borderColor = '#e1e5eb';
     document.getElementById('email').style.backgroundColor = 'white';
     document.getElementById('telefono').style.borderColor = '#e1e5eb';
@@ -211,40 +206,128 @@ function volverAlFormulario() {
     });
 }
 
-// ============ GENERAR PDF ============
+// ============ GENERAR PDF (CORREGIDO - SIN PADDING EXCESIVO) ============
 function generarPDF() {
     const element = document.getElementById('reciboContent');
     
+    // Clonar el elemento para no afectar el DOM
+    const clone = element.cloneNode(true);
+    clone.style.padding = '15px';
+    clone.style.fontSize = '14px';
+    clone.style.fontFamily = 'Arial, sans-serif';
+    clone.style.color = '#333';
+    clone.style.backgroundColor = 'white';
+    clone.style.maxWidth = '600px';
+    clone.style.margin = '0 auto';
+    
+    // Asegurar que todos los elementos tengan estilos inline
+    const allElements = clone.querySelectorAll('*');
+    allElements.forEach(el => {
+        el.style.fontFamily = 'Arial, sans-serif';
+    });
+    
+    // Crear un contenedor temporal
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '20px';
+    wrapper.style.backgroundColor = 'white';
+    wrapper.appendChild(clone);
+    
+    document.body.appendChild(wrapper);
+    
     const opt = {
-        margin:       1,
-        filename:     `recibo-${new Date().getTime()}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, letterRendering: true },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
-        pagebreak:    { mode: 'avoid-all' }
+        margin: [10, 10, 10, 10],
+        filename: `recibo-${new Date().getTime()}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+            scale: 2, 
+            letterRendering: true,
+            useCORS: true,
+            logging: false,
+            width: wrapper.scrollWidth,
+            height: wrapper.scrollHeight
+        },
+        jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait' 
+        }
     };
     
     const btn = document.querySelector('[onclick="generarPDF()"]');
     btn.textContent = '⏳ Generando PDF...';
     btn.disabled = true;
     
-    html2pdf().set(opt).from(element).save().then(() => {
-        btn.textContent = '📄 Guardar recibo en PDF';
-        btn.disabled = false;
-    }).catch(err => {
-        console.error('Error al generar PDF:', err);
-        alert('Error al generar el PDF. Por favor, intenta de nuevo.');
-        btn.textContent = '📄 Guardar recibo en PDF';
-        btn.disabled = false;
-    });
+    html2pdf().set(opt).from(wrapper).save()
+        .then(() => {
+            document.body.removeChild(wrapper);
+            btn.textContent = '📄 Guardar recibo en PDF';
+            btn.disabled = false;
+        })
+        .catch(err => {
+            console.error('Error al generar PDF:', err);
+            alert('Error al generar el PDF. Por favor, intenta de nuevo.');
+            document.body.removeChild(wrapper);
+            btn.textContent = '📄 Guardar recibo en PDF';
+            btn.disabled = false;
+        });
 }
 
 // ============ VALIDACIÓN EN TIEMPO REAL ============
-
-// Teléfono: solo números y limitar a 10 dígitos
 document.getElementById('telefono').addEventListener('input', function(e) {
     this.value = this.value.replace(/\D/g, '');
     if (this.value.length > 10) {
         this.value = this.value.slice(0, 10);
     }
 });
+
+document.getElementById('telefono').addEventListener('blur', function() {
+    const telefono = this.value.replace(/\s/g, '');
+    if (telefono.length === 10) {
+        this.value = telefono.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+        if (validarTelefonoFormato(telefono)) {
+            this.style.borderColor = '#28a745';
+            this.style.backgroundColor = '#f0fff0';
+        } else {
+            this.style.borderColor = '#dc3545';
+            this.style.backgroundColor = '#fff0f0';
+        }
+    } else if (telefono.length > 0 && telefono.length < 10) {
+        this.style.borderColor = '#dc3545';
+        this.style.backgroundColor = '#fff0f0';
+    } else {
+        this.style.borderColor = '#e1e5eb';
+        this.style.backgroundColor = 'white';
+    }
+});
+
+document.getElementById('email').addEventListener('blur', function() {
+    const email = this.value.trim();
+    if (email && !validarEmailFormato(email)) {
+        this.style.borderColor = '#dc3545';
+        this.style.backgroundColor = '#fff0f0';
+    } else if (email) {
+        this.style.borderColor = '#28a745';
+        this.style.backgroundColor = '#f0fff0';
+    } else {
+        this.style.borderColor = '#e1e5eb';
+        this.style.backgroundColor = 'white';
+    }
+});
+
+document.getElementById('email').addEventListener('input', function() {
+    const email = this.value.trim();
+    if (email.length > 5) {
+        if (validarEmailFormato(email)) {
+            this.style.borderColor = '#28a745';
+            this.style.backgroundColor = '#f0fff0';
+        } else {
+            this.style.borderColor = '#ffc107';
+            this.style.backgroundColor = '#fff8e1';
+        }
+    } else {
+        this.style.borderColor = '#e1e5eb';
+        this.style.backgroundColor = 'white';
+    }
+});
+
+console.log('✅ form.js cargado correctamente');

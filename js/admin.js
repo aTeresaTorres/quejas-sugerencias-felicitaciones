@@ -1,12 +1,13 @@
 // ============ VARIABLES GLOBALES ============
 let tickets = [];
 let ticketActual = null;
-let unsubscribe = null;
+let filtrosActuales = {};
+let ticketsNuevos = new Set();
 
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {
-        document.getElementById('userEmail').textContent = `${user.email}`;
+        document.getElementById('userEmail').textContent = `👤 ${user.email}`;
         cargarTickets();
     } else {
         window.location.href = 'login.html';
@@ -20,27 +21,131 @@ document.getElementById('btnLogout').addEventListener('click', () => {
     }
 });
 
-// ============ RECARGAR TICKETS ============
+// ============ RECARGAR CON FILTROS ACTUALES ============
 document.getElementById('btnRecargar').addEventListener('click', () => {
-    cargarTickets();
+    console.log('🔄 Recargando con filtros actuales:', filtrosActuales);
+    cargarTickets(filtrosActuales);
 });
+
+// ============ BÚSQUEDA GLOBAL ============
+document.getElementById('btnBuscar').addEventListener('click', () => {
+    const termino = document.getElementById('busquedaGlobal').value.trim();
+    if (termino) {
+        filtrosActuales.terminoBusqueda = termino;
+        cargarTickets(filtrosActuales);
+    }
+});
+
+document.getElementById('busquedaGlobal').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        document.getElementById('btnBuscar').click();
+    }
+});
+
+document.getElementById('btnLimpiarBusqueda').addEventListener('click', () => {
+    document.getElementById('busquedaGlobal').value = '';
+    delete filtrosActuales.terminoBusqueda;
+    cargarTickets(filtrosActuales);
+});
+
+// ============ FILTROS DE FECHA DINÁMICOS ============
+document.getElementById('tipoFiltroFecha').addEventListener('change', function() {
+    const container = document.getElementById('filtroFechaContainer');
+    const tipo = this.value;
+    
+    let html = '';
+    switch(tipo) {
+        case 'anio':
+            html = `
+                <div class="form-group">
+                    <label>Año</label>
+                    <select id="filtroAnio">
+                        ${generarOpcionesAnios()}
+                    </select>
+                </div>
+            `;
+            break;
+        case 'mes':
+            html = `
+                <div class="form-group">
+                    <label>Mes</label>
+                    <input type="month" id="filtroMes">
+                </div>
+            `;
+            break;
+        case 'periodo':
+            html = `
+                <div class="form-group">
+                    <label>Desde</label>
+                    <input type="date" id="filtroDesde">
+                </div>
+                <div class="form-group">
+                    <label>Hasta</label>
+                    <input type="date" id="filtroHasta">
+                </div>
+            `;
+            break;
+        case 'dia':
+            html = `
+                <div class="form-group">
+                    <label>Día específico</label>
+                    <input type="date" id="filtroDia">
+                </div>
+            `;
+            break;
+        default:
+            html = `<p style="color: #999; font-size: 0.9em;">Selecciona un tipo de filtro de fecha</p>`;
+    }
+    
+    container.innerHTML = html;
+});
+
+function generarOpcionesAnios() {
+    const anioActual = new Date().getFullYear();
+    let options = '';
+    for (let i = anioActual; i >= 2020; i--) {
+        options += `<option value="${i}">${i}</option>`;
+    }
+    return options;
+}
+
+// ============ FUNCIÓN PARA OBTENER FECHA CORRECTA ============
+function obtenerFechaCorrecta(fecha) {
+    if (!fecha) return null;
+    if (fecha.toDate) {
+        return fecha.toDate();
+    }
+    if (typeof fecha === 'string') {
+        return new Date(fecha);
+    }
+    if (fecha instanceof Date) {
+        return fecha;
+    }
+    return null;
+}
+
+function normalizarFecha(fecha) {
+    const d = new Date(fecha);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
 
 // ============ CARGAR TICKETS CON FILTROS ============
 async function cargarTickets(filtros = {}) {
+    filtrosActuales = { ...filtros };
+    
     const container = document.getElementById('ticketsContainer');
-    container.innerHTML = '<p style="text-align: center;">Cargando tickets...</p>';
+    container.innerHTML = '<p style="text-align: center;">⏳ Cargando tickets...</p>';
     
     try {
-        // Verificar que db existe
         if (typeof db === 'undefined') {
-            console.error('db no está definido. ¿Firebase se inicializó correctamente?');
-            container.innerHTML = '<p style="color: red;">Error: Firebase no está inicializado</p>';
+            container.innerHTML = '<p style="color: red;">❌ Error: Firebase no está inicializado</p>';
             return;
         }
         
         let query = db.collection('tickets').orderBy('fechaCreacion', 'desc');
         
-        // Aplicar filtros
+        // Aplicar filtros básicos
         if (filtros.asunto && filtros.asunto !== '') {
             query = query.where('asunto', '==', filtros.asunto);
         }
@@ -52,45 +157,151 @@ async function cargarTickets(filtros = {}) {
         }
         
         const snapshot = await query.get();
-        tickets = [];
+        let ticketsTemp = [];
+        const idsActuales = new Set();
         
         snapshot.forEach(doc => {
             const data = doc.data();
-            const fecha = data.fechaCreacion?.toDate?.() || new Date();
+            idsActuales.add(doc.id);
             
-            // Filtrar por fecha en cliente
             let incluir = true;
             
-            if (filtros.fechaInicio) {
-                const inicio = new Date(filtros.fechaInicio);
-                if (fecha < inicio) incluir = false;
-            }
-            if (filtros.fechaFin && incluir) {
-                const fin = new Date(filtros.fechaFin);
-                fin.setHours(23, 59, 59);
-                if (fecha > fin) incluir = false;
-            }
+            // Filtros de fecha (en cliente)
+            incluir = aplicarFiltrosFecha(data, filtros);
             
             if (incluir) {
-                tickets.push({ id: doc.id, ...data });
+                ticketsTemp.push({ id: doc.id, ...data });
             }
         });
         
-        renderTickets(tickets);
+        // BÚSQUEDA GLOBAL
+        if (filtros.terminoBusqueda) {
+            const termino = filtros.terminoBusqueda.toLowerCase();
+            ticketsTemp = ticketsTemp.filter(t => {
+                const folio = (t.folio || '').toLowerCase();
+                const nombre = (t.nombre || '').toLowerCase();
+                const contacto = (t.contacto || '').toLowerCase();
+                const email = (t.email || '').toLowerCase();
+                const telefono = (t.telefono || '').toLowerCase();
+                const mensaje = (t.mensaje || '').toLowerCase();
+                
+                return folio.includes(termino) || 
+                       nombre.includes(termino) || 
+                       contacto.includes(termino) ||
+                       email.includes(termino) ||
+                       telefono.includes(termino) ||
+                       mensaje.includes(termino);
+            });
+        }
+        
+        // Detectar tickets NUEVOS (solo si estado es pendiente y no tiene historial)
+        const idsNuevos = new Set();
+        ticketsTemp.forEach(t => {
+            // ✅ SOLO si estado es pendiente y no tiene historial
+            const tieneHistorial = t.historialSeguimiento && t.historialSeguimiento.length > 0;
+            const esPendiente = t.estado === 'pendiente';
+            
+            if (esPendiente && !tieneHistorial && !ticketsNuevos.has(t.id)) {
+                idsNuevos.add(t.id);
+            }
+            ticketsNuevos.add(t.id);
+        });
+        
+        tickets = ticketsTemp;
+        renderTickets(tickets, idsNuevos);
         actualizarEstadisticas(tickets);
+        
+        document.getElementById('contadorTickets').textContent = `(${tickets.length} tickets)`;
         
     } catch (error) {
         console.error('Error al cargar tickets:', error);
-        console.error('Stack trace:', error.stack);
         container.innerHTML = `
-            <p style="color: red;">Error al cargar los tickets</p>
+            <p style="color: red;">❌ Error al cargar los tickets</p>
             <p style="color: #666; font-size: 0.9em;">${error.message}</p>
         `;
     }
 }
 
+// ============ APLICAR FILTROS DE FECHA ============
+function aplicarFiltrosFecha(data, filtros) {
+    const tipoFecha = filtros.tipoFecha || 'ninguno';
+    const tipoAccion = filtros.tipoAccion || 'cualquier';
+    
+    if (tipoFecha === 'ninguno') return true;
+    
+    let fechaComparar = null;
+    let fechaObj = null;
+    
+    switch(tipoAccion) {
+        case 'creacion':
+            fechaObj = data.fechaCreacion;
+            break;
+        case 'actualizacion':
+            fechaObj = data.fechaActualizacion;
+            break;
+        case 'envio_dependencia':
+            fechaObj = data.fechaEnvioDependencia;
+            break;
+        case 'respuesta_dependencia':
+            fechaObj = data.fechaRespuestaDependencia;
+            break;
+        case 'respuesta_ciudadano': {
+            const respuestasCiudadano = data.respuestasCiudadano || [];
+            if (respuestasCiudadano.length > 0) {
+                const ultima = respuestasCiudadano[respuestasCiudadano.length - 1];
+                fechaObj = ultima.fecha;
+            }
+            break;
+        }
+        case 'resolucion':
+            fechaObj = data.fechaResolucion;
+            break;
+        default:
+            fechaObj = data.fechaCreacion;
+    }
+    
+    if (!fechaObj) return false;
+    
+    fechaComparar = obtenerFechaCorrecta(fechaObj);
+    if (!fechaComparar) return false;
+    
+    const fecha = normalizarFecha(fechaComparar);
+    
+    switch(tipoFecha) {
+        case 'anio': {
+            const anio = parseInt(filtros.anio);
+            if (!anio) return true;
+            return fecha.getFullYear() === anio;
+        }
+        case 'mes': {
+            if (!filtros.mes) return true;
+            const [year, month] = filtros.mes.split('-').map(Number);
+            return fecha.getFullYear() === year && fecha.getMonth() === month - 1;
+        }
+        case 'periodo': {
+            let incluir = true;
+            if (filtros.fechaInicio) {
+                const inicio = normalizarFecha(new Date(filtros.fechaInicio));
+                if (fecha < inicio) incluir = false;
+            }
+            if (filtros.fechaFin && incluir) {
+                const fin = normalizarFecha(new Date(filtros.fechaFin));
+                if (fecha > fin) incluir = false;
+            }
+            return incluir;
+        }
+        case 'dia': {
+            if (!filtros.dia) return true;
+            const dia = normalizarFecha(new Date(filtros.dia));
+            return fecha.getTime() === dia.getTime();
+        }
+        default:
+            return true;
+    }
+}
+
 // ============ RENDERIZAR TICKETS ============
-function renderTickets(tickets) {
+function renderTickets(tickets, idsNuevos = new Set()) {
     const container = document.getElementById('ticketsContainer');
     
     if (tickets.length === 0) {
@@ -116,35 +327,56 @@ function renderTickets(tickets) {
     `;
     
     tickets.forEach(ticket => {
-        const fecha = ticket.fechaCreacion?.toDate?.() || new Date();
+        const fecha = obtenerFechaCorrecta(ticket.fechaCreacion) || new Date();
         const estadoClass = ticket.estado || 'pendiente';
         const estadoLabel = {
-            'pendiente': 'Pendiente',
-            'en_revision': 'En revisión',
-            'resuelto': 'Resuelto',
-            'cerrado': 'Cerrado'
+            'pendiente': '⏳ Pendiente',
+            'en_revision': '🔍 En revisión',
+            'en_proceso': '⚙️ En proceso',
+            'vencido': '⏰ Vencido',
+            'resuelto': '✅ Resuelto',
+            'cerrado': '🔒 Cerrado'
         }[estadoClass] || estadoClass;
         
-        // Mostrar asunto legible
         const asuntoLabel = {
-            'queja': 'Queja',
-            'sugerencia': 'Sugerencia',
-            'felicitacion': 'Felicitación',
-            'pendiente_clasificar': 'Por clasificar'
+            'queja': '⚠️ Queja',
+            'sugerencia': '💡 Sugerencia',
+            'felicitacion': '🌟 Felicitación',
+            'pendiente_clasificar': '⏳ Por clasificar',
+            'no_procede': '🚫 No procede',
+            'otros': '📌 Otros'
         }[ticket.asunto] || ticket.asunto;
         
+        let contactoMostrar = ticket.contacto;
+        if (ticket.email && ticket.telefono) {
+            contactoMostrar = `${ticket.email} / ${ticket.telefono}`;
+        } else if (ticket.email) {
+            contactoMostrar = ticket.email;
+        } else if (ticket.telefono) {
+            contactoMostrar = ticket.telefono;
+        }
+        
+        const dias = Math.floor((new Date() - fecha) / (1000 * 60 * 60 * 24));
+        const diasLabel = dias === 0 ? 'Hoy' : `${dias}d`;
+        
+        // ✅ SOLO resaltar si es nuevo (pendiente y sin historial)
+        const esNuevo = idsNuevos.has(ticket.id);
+        const esPendiente = ticket.estado === 'pendiente';
+        const tieneHistorial = ticket.historialSeguimiento && ticket.historialSeguimiento.length > 0;
+        const debeResaltar = esNuevo && esPendiente && !tieneHistorial;
+        
         html += `
-            <tr>
-                <td><strong>${ticket.folio}</strong></td>
+            <tr class="${debeResaltar ? 'nuevo-ticket' : ''}" style="${debeResaltar ? 'background: #fff3cd; animation: highlightNew 3s ease;' : ''}">
+                <td><strong>${debeResaltar ? '🆕 ' : ''}${ticket.folio}</strong></td>
                 <td>${ticket.nombre}</td>
-                <td>${ticket.contacto}</td>
+                <td>${contactoMostrar}</td>
                 <td>${asuntoLabel}</td>
                 <td>${ticket.dependencia || 'Sin asignar'}</td>
                 <td><span class="estado ${estadoClass}">${estadoLabel}</span></td>
-                <td>${fecha.toLocaleDateString('es-MX')}</td>
+                <td>${fecha.toLocaleDateString('es-MX')}<br><small>${diasLabel}</small></td>
                 <td>
                     <button onclick="verTicket('${ticket.id}')" class="btn-small">👁️ Ver</button>
-                    <button onclick="responderTicket('${ticket.id}')" class="btn-small btn-success">✉️ Responder</button>
+                    <button onclick="irSeguimiento('${ticket.id}')" class="btn-small btn-success">📋 Seguimiento</button>
                 </td>
             </tr>
         `;
@@ -152,19 +384,15 @@ function renderTickets(tickets) {
     
     html += '</tbody></table></div>';
     container.innerHTML = html;
-}
-
-// ============ ACTUALIZAR ESTADÍSTICAS ============
-function actualizarEstadisticas(tickets) {
-    const total = tickets.length;
-    const pendientes = tickets.filter(t => t.estado === 'pendiente').length;
-    const enRevision = tickets.filter(t => t.estado === 'en_revision').length;
-    const resueltos = tickets.filter(t => t.estado === 'resuelto' || t.estado === 'cerrado').length;
     
-    document.getElementById('totalTickets').textContent = total;
-    document.getElementById('pendientes').textContent = pendientes;
-    document.getElementById('enRevision').textContent = enRevision;
-    document.getElementById('resueltos').textContent = resueltos;
+    if (idsNuevos.size > 0) {
+        setTimeout(() => {
+            document.querySelectorAll('.nuevo-ticket').forEach(el => {
+                el.style.background = '';
+                el.style.animation = '';
+            });
+        }, 4000);
+    }
 }
 
 // ============ VER TICKET ============
@@ -175,51 +403,64 @@ async function verTicket(id) {
         return;
     }
     
-    ticketActual = ticket;
-    const modal = document.getElementById('modalTicket');
-    const detalle = document.getElementById('detalleTicket');
+    const modal = document.getElementById('modalVerTicket');
+    const detalle = document.getElementById('detalleTicketVer');
     
-    const fecha = ticket.fechaCreacion?.toDate?.() || new Date();
+    const fecha = obtenerFechaCorrecta(ticket.fechaCreacion) || new Date();
     const estadoLabel = {
-        'pendiente': 'Pendiente',
-        'en_revision': 'En revisión',
-        'resuelto': 'Resuelto',
-        'cerrado': 'Cerrado'
+        'pendiente': '⏳ Pendiente',
+        'en_revision': '🔍 En revisión',
+        'en_proceso': '⚙️ En proceso',
+        'vencido': '⏰ Vencido',
+        'resuelto': '✅ Resuelto',
+        'cerrado': '🔒 Cerrado'
     }[ticket.estado] || ticket.estado;
     
-    // Mostrar ambos contactos si existen
+    const asuntoLabel = {
+        'queja': '⚠️ Queja',
+        'sugerencia': '💡 Sugerencia',
+        'felicitacion': '🌟 Felicitación',
+        'pendiente_clasificar': '⏳ Por clasificar',
+        'no_procede': '🚫 No procede',
+        'otros': '📌 Otros'
+    }[ticket.asunto] || ticket.asunto;
+    
     let contactosHTML = '';
     if (ticket.email && ticket.telefono) {
         contactosHTML = `
-            <div><strong>Correo:</strong> ${ticket.email}</div>
-            <div><strong>Teléfono:</strong> ${ticket.telefono}</div>
+            <div><strong>📧 Correo:</strong> ${ticket.email}</div>
+            <div><strong>📞 Teléfono:</strong> ${ticket.telefono}</div>
         `;
     } else if (ticket.email) {
-        contactosHTML = `
-            <div><strong>Correo:</strong> ${ticket.email}</div>
-            <div style="color: #999;"><em>Teléfono no proporcionado</em></div>
-        `;
+        contactosHTML = `<div><strong>📧 Correo:</strong> ${ticket.email}</div>`;
     } else if (ticket.telefono) {
-        contactosHTML = `
-            <div style="color: #999;"><em>Correo no proporcionado</em></div>
-            <div><strong>Teléfono:</strong> ${ticket.telefono}</div>
-        `;
+        contactosHTML = `<div><strong>📞 Teléfono:</strong> ${ticket.telefono}</div>`;
     }
     
-    const asuntoLabel = {
-        'queja': 'Queja',
-        'sugerencia': 'Sugerencia',
-        'felicitacion': 'Felicitación',
-        'pendiente_clasificar': 'Pendiente de clasificar'
-    }[ticket.asunto] || ticket.asunto;
+    let historialHTML = '';
+    if (ticket.historialSeguimiento && ticket.historialSeguimiento.length > 0) {
+        historialHTML = ticket.historialSeguimiento.map(h => {
+            const fechaH = new Date(h.fecha);
+            return `
+                <div class="historial-item">
+                    <p><strong>${h.accion}</strong> - ${fechaH.toLocaleString('es-MX')}</p>
+                    ${h.descripcion ? `<p>${h.descripcion}</p>` : ''}
+                    ${h.oficio ? `<p><strong>Oficio:</strong> ${h.oficio}</p>` : ''}
+                    ${h.usuario ? `<p><small>Por: ${h.usuario}</small></p>` : ''}
+                </div>
+            `;
+        }).join('');
+    } else {
+        historialHTML = '<p style="color: #999;">Sin historial de seguimiento</p>';
+    }
     
     let respuestasHTML = '';
     if (ticket.respuestas && ticket.respuestas.length > 0) {
         respuestasHTML = ticket.respuestas.map(r => {
-            const fechaResp = r.fecha?.toDate?.() || new Date(r.fecha);
+            const fechaR = new Date(r.fecha);
             return `
                 <div class="respuesta-item">
-                    <p><strong>${r.usuario}</strong> - ${fechaResp.toLocaleString('es-MX')}</p>
+                    <p><strong>${r.usuario}</strong> - ${fechaR.toLocaleString('es-MX')}</p>
                     <p>${r.descripcion}</p>
                     ${r.archivos && r.archivos.length > 0 ? 
                         r.archivos.map(url => `<a href="${url}" target="_blank" class="file-link">📎 Ver archivo</a>`).join(' ') : 
@@ -232,259 +473,135 @@ async function verTicket(id) {
     }
     
     detalle.innerHTML = `
-        <h2>Ticket ${ticket.folio}</h2>
+        <h2>📋 Ticket ${ticket.folio}</h2>
         
         <div class="ticket-info">
             <div class="info-grid">
-                <div><strong>Nombre:</strong> ${ticket.nombre}</div>
+                <div><strong>👤 Nombre:</strong> ${ticket.nombre}</div>
                 ${contactosHTML}
-                <div><strong>Asunto:</strong> <span style="font-weight: bold;">${asuntoLabel}</span></div>
-                <div><strong>Dependencia:</strong> ${ticket.dependencia || 'Sin asignar'}</div>
-                <div><strong>Estado:</strong> <span class="estado ${ticket.estado}">${estadoLabel}</span></div>
-                <div><strong>Fecha:</strong> ${fecha.toLocaleString('es-MX')}</div>
+                <div><strong>📌 Asunto:</strong> <span style="font-weight: bold;">${asuntoLabel}</span></div>
+                <div><strong>🏢 Dependencia:</strong> ${ticket.dependencia || 'Sin asignar'}</div>
+                <div><strong>📊 Estado:</strong> <span class="estado ${ticket.estado}">${estadoLabel}</span></div>
+                <div><strong>📅 Fecha creación:</strong> ${fecha.toLocaleString('es-MX')}</div>
+                <div><strong>⏱️ Días transcurridos:</strong> ${Math.floor((new Date() - fecha) / (1000 * 60 * 60 * 24))} días</div>
             </div>
             
             <div class="mensaje-box">
-                <strong>Mensaje:</strong>
+                <strong>📝 Mensaje:</strong>
                 <p>${ticket.mensaje}</p>
             </div>
         </div>
         
+        <div class="historial">
+            <h3>📜 Historial de seguimiento</h3>
+            ${historialHTML}
+        </div>
+        
         <div class="respuestas">
-            <h3>Respuestas</h3>
+            <h3>💬 Respuestas al usuario</h3>
             ${respuestasHTML}
         </div>
         
-        <div class="acciones-ticket">
-            <h3>Acciones</h3>
-            
-            <div class="form-group">
-                <label>Clasificar asunto:</label>
-                <select id="asignarAsunto">
-                    <option value="queja" ${ticket.asunto === 'queja' ? 'selected' : ''}>Queja</option>
-                    <option value="sugerencia" ${ticket.asunto === 'sugerencia' ? 'selected' : ''}>Sugerencia</option>
-                    <option value="felicitacion" ${ticket.asunto === 'felicitacion' ? 'selected' : ''}>Felicitación</option>
-                    <option value="pendiente_clasificar" ${ticket.asunto === 'pendiente_clasificar' ? 'selected' : ''}>Pendiente de clasificar</option>
-                </select>
-                <button onclick="asignarAsunto('${ticket.id}')" class="btn-success">Clasificar</button>
-            </div>
-            
-            <div class="form-group">
-                <label>Cambiar estado:</label>
-                <select id="cambiarEstado">
-                    <option value="pendiente" ${ticket.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
-                    <option value="en_revision" ${ticket.estado === 'en_revision' ? 'selected' : ''}>En revisión</option>
-                    <option value="resuelto" ${ticket.estado === 'resuelto' ? 'selected' : ''}>Resuelto</option>
-                    <option value="cerrado" ${ticket.estado === 'cerrado' ? 'selected' : ''}>Cerrado</option>
-                </select>
-                <button onclick="actualizarEstado('${ticket.id}')" class="btn-success">Actualizar estado</button>
-            </div>
+        <div style="margin-top: 20px; text-align: center;">
+            <button onclick="cerrarModalVer()" style="background: #6c757d;">Cerrar</button>
+            <button onclick="cerrarModalVer(); irSeguimiento('${ticket.id}')" class="btn-success">📋 Ir a seguimiento</button>
         </div>
     `;
     
     modal.style.display = 'block';
 }
 
-// ============ ASIGNAR ASUNTO ============
-async function asignarAsunto(id) {
-    const nuevoAsunto = document.getElementById('asignarAsunto').value;
-    
-    if (!confirm(`¿Clasificar este asunto como "${nuevoAsunto}"?`)) return;
-    
-    try {
-        await db.collection('tickets').doc(id).update({
-            asunto: nuevoAsunto,
-            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        alert('Asunto clasificado correctamente');
-        cerrarModal();
-        cargarTickets();
-        
-    } catch (error) {
-        console.error('Error al clasificar asunto:', error);
-        alert('Error al clasificar el asunto: ' + error.message);
-    }
+function cerrarModalVer() {
+    document.getElementById('modalVerTicket').style.display = 'none';
 }
 
-// ============ ACTUALIZAR ESTADO ============
-async function actualizarEstado(id) {
-    const nuevoEstado = document.getElementById('cambiarEstado').value;
-    
-    if (!confirm(`¿Cambiar estado a "${nuevoEstado}"?`)) return;
-    
-    try {
-        await db.collection('tickets').doc(id).update({
-            estado: nuevoEstado,
-            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        alert('Estado actualizado correctamente');
-        cerrarModal();
-        cargarTickets();
-        
-    } catch (error) {
-        console.error('Error al actualizar estado:', error);
-        alert('Error al actualizar el estado: ' + error.message);
-    }
+// ============ IR A SEGUIMIENTO ============
+function irSeguimiento(id) {
+    window.location.href = `seguimiento.html?id=${id}`;
 }
 
-// ============ RESPONDER TICKET ============
-function responderTicket(id) {
-    const ticket = tickets.find(t => t.id === id);
-    if (!ticket) return;
+// ============ ACTUALIZAR ESTADÍSTICAS ============
+function actualizarEstadisticas(tickets) {
+    const total = tickets.length;
+    const pendientes = tickets.filter(t => t.estado === 'pendiente' || t.estado === 'en_revision').length;
+    const enProceso = tickets.filter(t => t.estado === 'en_proceso').length;
+    const vencidos = tickets.filter(t => t.estado === 'vencido').length;
+    const resueltos = tickets.filter(t => t.estado === 'resuelto' || t.estado === 'cerrado').length;
     
-    const modal = document.getElementById('modalTicket');
-    const detalle = document.getElementById('detalleTicket');
-    
-    detalle.innerHTML = `
-        <h2>Responder ticket ${ticket.folio}</h2>
-        <p><strong>Para:</strong> ${ticket.nombre} (${ticket.contacto})</p>
-        
-        <div class="form-responder">
-            <div class="form-group">
-                <label>Descripción de la respuesta *</label>
-                <textarea id="respuestaTexto" rows="4" placeholder="Escribe tu respuesta aquí..." required></textarea>
-            </div>
-            <div class="form-group">
-                <label>📎 Subir evidencia (archivos)</label>
-                <input type="file" id="archivosRespuesta" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt">
-                <small>Puedes subir múltiples archivos (PDF, imágenes, documentos)</small>
-                <div id="listaArchivos" style="margin-top: 10px;"></div>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="guardarRespuesta('${ticket.id}')" class="btn-success" style="flex: 1;">Enviar respuesta</button>
-                <button onclick="cerrarModal()" style="flex: 0.5; background: #6c757d;">Cancelar</button>
-            </div>
-        </div>
-    `;
-    
-    modal.style.display = 'block';
-    
-    // Mostrar archivos seleccionados
-    document.getElementById('archivosRespuesta').addEventListener('change', function(e) {
-        const lista = document.getElementById('listaArchivos');
-        lista.innerHTML = '';
-        for (let file of this.files) {
-            const div = document.createElement('div');
-            div.textContent = `${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-            div.style.cssText = 'padding: 5px; background: #f1f1f1; margin: 3px 0; border-radius: 3px;';
-            lista.appendChild(div);
-        }
-    });
-}
-
-// ============ GUARDAR RESPUESTA ============
-async function guardarRespuesta(id) {
-    const texto = document.getElementById('respuestaTexto').value.trim();
-    const archivosInput = document.getElementById('archivosRespuesta');
-    
-    if (!texto) {
-        alert('Por favor, escribe una descripción para la respuesta');
-        return;
-    }
-    
-    const btn = document.querySelector('[onclick^="guardarRespuesta"]');
-    btn.textContent = 'Enviando...';
-    btn.disabled = true;
-    
-    try {
-        const user = auth.currentUser;
-        const archivosURLs = [];
-        
-        // Subir archivos si existen
-        if (archivosInput.files.length > 0) {
-            for (let file of archivosInput.files) {
-                const path = `respuestas/${id}/${Date.now()}_${file.name}`;
-                const storageRef = storage.ref(path);
-                await storageRef.put(file);
-                const url = await storageRef.getDownloadURL();
-                archivosURLs.push(url);
-            }
-        }
-        
-        // Guardar respuesta en Firestore
-        const ticketRef = db.collection('tickets').doc(id);
-        await ticketRef.update({
-            respuestas: firebase.firestore.FieldValue.arrayUnion({
-                fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                descripcion: texto,
-                archivos: archivosURLs,
-                usuario: user.email
-            }),
-            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp(),
-            estado: 'en_revision'
-        });
-        
-        alert('Respuesta guardada correctamente');
-        cerrarModal();
-        cargarTickets();
-        
-    } catch (error) {
-        console.error('Error al guardar respuesta:', error);
-        alert('Error al guardar la respuesta: ' + error.message);
-    } finally {
-        btn.textContent = 'Enviar respuesta';
-        btn.disabled = false;
-    }
-}
-
-// ============ CERRAR MODAL ============
-function cerrarModal() {
-    document.getElementById('modalTicket').style.display = 'none';
+    document.getElementById('totalTickets').textContent = total;
+    document.getElementById('pendientes').textContent = pendientes;
+    document.getElementById('enRevision').textContent = enProceso;
+    document.getElementById('resueltos').textContent = resueltos;
+    document.getElementById('vencidos').textContent = vencidos;
 }
 
 // ============ APLICAR FILTROS ============
 document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
-    console.log('Aplicando filtros...');
-    
     const filtros = {
         asunto: document.getElementById('filtroAsunto').value,
         estado: document.getElementById('filtroEstado').value,
         dependencia: document.getElementById('filtroDependencia').value,
-        fechaInicio: document.getElementById('filtroDesde').value,
-        fechaFin: document.getElementById('filtroHasta').value
+        tipoFecha: document.getElementById('tipoFiltroFecha').value,
+        tipoAccion: document.getElementById('filtroTipoAccion').value
     };
     
-    // Filtrar por mes si se especificó
-    const mes = document.getElementById('filtroMes').value;
-    if (mes) {
-        const [year, month] = mes.split('-');
-        const inicio = new Date(year, month - 1, 1);
-        const fin = new Date(year, month, 0);
-        filtros.fechaInicio = inicio.toISOString().split('T')[0];
-        filtros.fechaFin = fin.toISOString().split('T')[0];
+    const tipoFecha = filtros.tipoFecha;
+    switch(tipoFecha) {
+        case 'anio':
+            filtros.anio = document.getElementById('filtroAnio')?.value;
+            break;
+        case 'mes':
+            filtros.mes = document.getElementById('filtroMes')?.value;
+            break;
+        case 'periodo':
+            filtros.fechaInicio = document.getElementById('filtroDesde')?.value;
+            filtros.fechaFin = document.getElementById('filtroHasta')?.value;
+            break;
+        case 'dia':
+            filtros.dia = document.getElementById('filtroDia')?.value;
+            break;
+        default:
+            break;
     }
     
-    console.log('Filtros aplicados:', filtros);
+    Object.keys(filtros).forEach(key => {
+        if (!filtros[key] || filtros[key] === 'ninguno') delete filtros[key];
+    });
+    
+    const termino = document.getElementById('busquedaGlobal').value.trim();
+    if (termino) {
+        filtros.terminoBusqueda = termino;
+    }
+    
     cargarTickets(filtros);
 });
 
 // ============ LIMPIAR FILTROS ============
 document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
-    document.getElementById('filtroMes').value = '';
-    document.getElementById('filtroDesde').value = '';
-    document.getElementById('filtroHasta').value = '';
+    document.getElementById('tipoFiltroFecha').value = 'ninguno';
+    document.getElementById('filtroTipoAccion').value = 'cualquier';
     document.getElementById('filtroAsunto').value = '';
     document.getElementById('filtroEstado').value = '';
     document.getElementById('filtroDependencia').value = '';
+    document.getElementById('busquedaGlobal').value = '';
+    document.getElementById('filtroFechaContainer').innerHTML = '<p style="color: #999; font-size: 0.9em;">Selecciona un tipo de filtro de fecha</p>';
     
+    filtrosActuales = {};
     cargarTickets();
 });
 
-// ============ CERRAR MODAL AL HACER CLICK FUERA ============
+// ============ CERRAR MODAL ============
 window.onclick = function(event) {
-    const modal = document.getElementById('modalTicket');
+    const modal = document.getElementById('modalVerTicket');
     if (event.target == modal) {
-        cerrarModal();
+        cerrarModalVer();
     }
 }
 
-// ============ TECLA ESC PARA CERRAR MODAL ============
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        cerrarModal();
+        cerrarModalVer();
     }
 });
 
-console.log('admin.js cargado completamente');
+console.log('✅ admin.js cargado correctamente');
