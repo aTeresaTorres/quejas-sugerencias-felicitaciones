@@ -8,165 +8,205 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="admin-container">
-        <!-- HEADER -->
-        <header>
-            <h1><i class="fas fa-chart-pie"></i> Panel de Administración</h1>
-            <div class="header-user">
-                <span id="userEmail"><i class="fas fa-user-circle"></i> <span id="userEmailText"></span></span>
-                <button id="btnLogout" class="btn-danger"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+    <div class="admin-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-gavel logo-icon"></i>
+                <h2>Buzón <span>Ciudadano</span></h2>
             </div>
-        </header>
 
-        <!-- ESTADÍSTICAS -->
-        <section class="stats">
-            <div class="stats-group">
-                <h4><i class="fas fa-circle"></i> Por Estado</h4>
-                <div class="stats-cards">
-                    <div class="stat-card stat-total">
-                        <span class="stat-number" id="totalTickets">0</span>
-                        <span class="stat-label">Total</span>
+            <div class="sidebar-user">
+                <i class="fas fa-user-circle"></i>
+                <span id="userEmailText">admin@ejemplo.com</span>
+                <button id="btnLogout" class="btn-logout" title="Cerrar sesión">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filtros-sidebar">
+                <!-- FECHA -->
+                <div class="filtro-seccion">
+                    <div class="filtro-titulo">
+                        <i class="fas fa-calendar"></i> Fecha
+                        <span class="filtro-count" id="fechaCount"></span>
                     </div>
-                    <div class="stat-card stat-pendientes">
-                        <span class="stat-number" id="pendientes">0</span>
-                        <span class="stat-label">Pendientes</span>
-                    </div>
-                    <div class="stat-card stat-revision">
-                        <span class="stat-number" id="enRevision">0</span>
-                        <span class="stat-label">En revisión</span>
-                    </div>
-                    <div class="stat-card stat-proceso">
-                        <span class="stat-number" id="enProceso">0</span>
-                        <span class="stat-label">En proceso</span>
-                    </div>
-                    <div class="stat-card stat-vencidos">
-                        <span class="stat-number" id="vencidos">0</span>
-                        <span class="stat-label">Vencidos</span>
-                    </div>
-                    <div class="stat-card stat-resueltos">
-                        <span class="stat-number" id="resueltos">0</span>
-                        <span class="stat-label">Resueltos</span>
+                    <div class="fecha-filtros">
+                        <select id="tipoFiltroFecha">
+                            <option value="ninguno">Sin filtro de fecha</option>
+                            <option value="anio">Año específico</option>
+                            <option value="mes">Mes específico</option>
+                            <option value="periodo">Periodo (de - a)</option>
+                            <option value="dia">Día específico</option>
+                        </select>
+                        <div id="filtroFechaContainer">
+                            <p style="color: var(--text-muted); font-size: 0.75rem;">Selecciona un tipo de filtro</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="stats-group">
-                <h4><i class="fas fa-building"></i> Por Dependencia</h4>
-                <div class="stats-cards" id="dependenciasStats">
-                    <p style="color: #999; text-align: center; padding: 10px; grid-column: 1 / -1;">Cargando...</p>
-                </div>
-            </div>
+                <hr class="filtro-divider">
 
-            <div class="stats-group">
-                <h4><i class="fas fa-tag"></i> Por Asunto</h4>
-                <div class="stats-cards" id="asuntosStats">
-                    <p style="color: #999; text-align: center; padding: 10px; grid-column: 1 / -1;">Cargando...</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- BÚSQUEDA GLOBAL -->
-        <section class="busqueda-section">
-            <div class="busqueda-global">
-                <i class="fas fa-search search-icon"></i>
-                <input type="text" id="busquedaGlobal" placeholder="Buscar por folio, nombre, contacto...">
-                <button id="btnBuscar">Buscar</button>
-                <button id="btnLimpiarBusqueda" class="btn-secondary">Limpiar</button>
-            </div>
-        </section>
-
-        <!-- FILTROS -->
-        <section class="filtros">
-            <div class="filtros-header">
-                <h3><i class="fas fa-filter"></i> Filtros</h3>
-            </div>
-            
-            <div class="filtros-grid">
-                <div class="filtro-grupo">
-                    <label>Tipo de fecha</label>
-                    <select id="tipoFiltroFecha">
-                        <option value="ninguno">Sin filtro de fecha</option>
-                        <option value="anio">Año específico</option>
-                        <option value="mes">Mes específico</option>
-                        <option value="periodo">Periodo (de - a)</option>
-                        <option value="dia">Día específico</option>
-                    </select>
+                <!-- ACCIÓN -->
+                <div class="filtro-seccion">
+                    <div class="filtro-titulo">
+                        <i class="fas fa-tasks"></i> Fecha de qué acción
+                        <span class="filtro-count" id="accionCount"></span>
+                    </div>
+                    <div class="checkbox-group" id="filtroTipoAccionContainer">
+                        <label><input type="checkbox" value="cualquier" checked> Cualquier acción <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="creacion"> Generación del ticket <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="actualizacion"> Actualización de datos <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="envio_dependencia"> Envío a dependencia <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="respuesta_dependencia"> Respuesta de dependencia <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="respuesta_ciudadano"> Respuesta al ciudadano <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="resolucion"> Ticket resuelto <span class="check-count"></span></label>
+                    </div>
                 </div>
 
-                <div class="filtro-grupo" id="filtroFechaContainer">
-                    <p style="color: #999; font-size: 0.85em; padding: 5px 0;">Selecciona un tipo de filtro de fecha</p>
+                <hr class="filtro-divider">
+
+                <!-- ASUNTO -->
+                <div class="filtro-seccion">
+                    <div class="filtro-titulo">
+                        <i class="fas fa-tag"></i> Asunto
+                        <span class="filtro-count" id="asuntoCount"></span>
+                    </div>
+                    <div class="checkbox-group" id="filtroAsuntoContainer">
+                        <label><input type="checkbox" value="queja"> Queja <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="sugerencia"> Sugerencia <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="felicitacion"> Felicitación <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="pendiente_clasificar"> Por clasificar <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="no_procede"> No procede <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="otros"> Otros <span class="check-count"></span></label>
+                    </div>
                 </div>
 
-                <div class="filtro-grupo">
-                    <label>Fecha de qué acción</label>
-                    <select id="filtroTipoAccion">
-                        <option value="cualquier">Cualquier acción</option>
-                        <option value="creacion">Generación del ticket</option>
-                        <option value="actualizacion">Actualización de datos</option>
-                        <option value="envio_dependencia">Envío a dependencia</option>
-                        <option value="respuesta_dependencia">Respuesta de dependencia</option>
-                        <option value="respuesta_ciudadano">Respuesta al ciudadano</option>
-                        <option value="resolucion">Ticket resuelto</option>
-                    </select>
+                <hr class="filtro-divider">
+
+                <!-- DEPENDENCIA -->
+                <div class="filtro-seccion">
+                    <div class="filtro-titulo">
+                        <i class="fas fa-building"></i> Dependencia
+                        <span class="filtro-count" id="dependenciaCount"></span>
+                    </div>
+                    <div class="checkbox-group" id="filtroDependenciaContainer">
+                        <label><input type="checkbox" value="sistemas"> Sistemas <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="recursos_humanos"> Recursos Humanos <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="finanzas"> Finanzas <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="operaciones"> Operaciones <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="atencion_cliente"> Atención al Cliente <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="juridico"> Jurídico <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="compras"> Compras <span class="check-count"></span></label>
+                    </div>
                 </div>
 
-                <div class="filtro-grupo">
-                    <label>Asunto</label>
-                    <select id="filtroAsunto">
-                        <option value="">Todos</option>
-                        <option value="queja">Queja</option>
-                        <option value="sugerencia">Sugerencia</option>
-                        <option value="felicitacion">Felicitación</option>
-                        <option value="pendiente_clasificar">Por clasificar</option>
-                        <option value="no_procede">No procede</option>
-                        <option value="otros">Otros</option>
-                    </select>
+                <hr class="filtro-divider">
+
+                <!-- ESTADO -->
+                <div class="filtro-seccion">
+                    <div class="filtro-titulo">
+                        <i class="fas fa-circle"></i> Estado
+                        <span class="filtro-count" id="estadoCount"></span>
+                    </div>
+                    <div class="checkbox-group" id="filtroEstadoContainer">
+                        <label><input type="checkbox" value="pendiente"> Pendiente <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="en_revision"> En revisión <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="en_proceso"> En proceso <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="vencido"> Vencido <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="resuelto"> Resuelto <span class="check-count"></span></label>
+                        <label><input type="checkbox" value="cerrado"> Cerrado <span class="check-count"></span></label>
+                    </div>
                 </div>
 
-                <div class="filtro-grupo">
-                    <label>Dependencia</label>
-                    <select id="filtroDependencia">
-                        <option value="">Todas</option>
-                        <option value="sistemas">Sistemas</option>
-                        <option value="recursos_humanos">Recursos Humanos</option>
-                        <option value="finanzas">Finanzas</option>
-                        <option value="operaciones">Operaciones</option>
-                        <option value="atencion_cliente">Atención al Cliente</option>
-                        <option value="juridico">Jurídico</option>
-                        <option value="compras">Compras</option>
-                    </select>
-                </div>
-
-                <div class="filtro-grupo">
-                    <label>Estado</label>
-                    <select id="filtroEstado">
-                        <option value="">Todos</option>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="en_revision">En revisión</option>
-                        <option value="en_proceso">En proceso</option>
-                        <option value="vencido">Vencido</option>
-                        <option value="resuelto">Resuelto</option>
-                        <option value="cerrado">Cerrado</option>
-                    </select>
+                <!-- ACCIONES -->
+                <div class="filtros-acciones" style="margin-top: 16px;">
+                    <button id="btnLimpiarFiltros" class="btn-filtro-limpiar" style="width: 100%;">
+                        <i class="fas fa-undo"></i> Limpiar todos los filtros
+                    </button>
                 </div>
             </div>
+        </aside>
 
-            <div class="filtros-acciones">
-                <button id="btnAplicarFiltros" class="btn-primary"><i class="fas fa-check"></i> Aplicar filtros</button>
-                <button id="btnLimpiarFiltros" class="btn-secondary"><i class="fas fa-undo"></i> Limpiar</button>
-                <button id="btnRecargar" class="btn-success"><i class="fas fa-sync"></i> Recargar</button>
-            </div>
-        </section>
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="main-header">
+                <h1>
+                    <i class="fas fa-chart-pie"></i> Panel de Administración
+                    <span class="total-count"></span>
+                </h1>
+                <div class="header-actions">
+                    <button id="btnRecargar" class="btn-recargar">
+                        <i class="fas fa-sync"></i> Recargar
+                    </button>
+                </div>
+            </header>
 
-        <!-- LISTA DE TICKETS -->
-        <section class="tickets-list">
-            <div class="tickets-header">
-                <h3><i class="fas fa-list"></i> Tickets registrados <span id="contadorTickets"></span></h3>
-            </div>
-            <div id="ticketsContainer">
-                <p style="text-align: center; color: #999;">Cargando tickets...</p>
-            </div>
-        </section>
+            <!-- ESTADÍSTICAS -->
+            <section class="stats-grid">
+                <div class="stat-card total">
+                    <span class="stat-number" id="totalTickets">0</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-card pendientes">
+                    <span class="stat-number" id="pendientes">0</span>
+                    <span class="stat-label">Pendientes</span>
+                </div>
+                <div class="stat-card revision">
+                    <span class="stat-number" id="enRevision">0</span>
+                    <span class="stat-label">En revisión</span>
+                </div>
+                <div class="stat-card proceso">
+                    <span class="stat-number" id="enProceso">0</span>
+                    <span class="stat-label">En proceso</span>
+                </div>
+                <div class="stat-card vencidos">
+                    <span class="stat-number" id="vencidos">0</span>
+                    <span class="stat-label">Vencidos</span>
+                </div>
+                <div class="stat-card resueltos">
+                    <span class="stat-number" id="resueltos">0</span>
+                    <span class="stat-label">Resueltos</span>
+                </div>
+            </section>
+
+            <!-- ESTADÍSTICAS SECUNDARIAS -->
+            <section class="stats-secundarias">
+                <div class="stats-group">
+                    <h4><i class="fas fa-building"></i> Por Dependencia</h4>
+                    <div class="stats-mini" id="dependenciasStats">
+                        <span style="color: var(--text-muted);">Cargando...</span>
+                    </div>
+                </div>
+                <div class="stats-group">
+                    <h4><i class="fas fa-tag"></i> Por Asunto</h4>
+                    <div class="stats-mini" id="asuntosStats">
+                        <span style="color: var(--text-muted);">Cargando...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BÚSQUEDA -->
+            <section class="busqueda-section">
+                <div class="busqueda-bar">
+                    <input type="text" id="busquedaGlobal" placeholder="Buscar por folio, nombre o contacto...">
+                    <button id="btnBuscar" class="btn-buscar"><i class="fas fa-search"></i> Buscar</button>
+                    <button id="btnLimpiarBusqueda" class="btn-limpiar-busqueda"><i class="fas fa-times"></i> Limpiar</button>
+                </div>
+            </section>
+
+            <!-- TABLA DE TICKETS -->
+            <section class="tickets-section">
+                <div class="tickets-header">
+                    <h3><i class="fas fa-list"></i> Tickets registrados <span id="contadorTickets"></span></h3>
+                </div>
+                <div id="ticketsContainer" class="table-responsive">
+                    <p style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando tickets...</p>
+                </div>
+            </section>
+        </main>
     </div>
 
     <!-- MODAL PARA VER TICKET -->

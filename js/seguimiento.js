@@ -15,7 +15,7 @@ if (!ticketId) {
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {
-        document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('userEmail').textContent = '👤 ' + user.email;
         cargarTicket();
     } else {
         window.location.href = 'login.html';
@@ -41,9 +41,6 @@ function formatearFechaSinHora(fecha) {
     return d.toLocaleDateString('es-MX');
 }
 
-// Fecha de "hoy" en horario LOCAL como string YYYY-MM-DD.
-// new Date().toISOString() usa UTC y puede adelantar/atrasar un día
-// completo en husos horarios como el de México — por eso NO se usa aquí.
 function fechaHoy() {
     const d = new Date();
     const year = d.getFullYear();
@@ -52,8 +49,6 @@ function fechaHoy() {
     return `${year}-${month}-${day}`;
 }
 
-// Convierte una fecha (Timestamp, string "YYYY-MM-DD", string ISO o Date) a un
-// objeto Date interpretado en horario LOCAL cuando es una fecha sin hora.
 function parseFechaLocal(fecha) {
     if (!fecha) return null;
     if (fecha.toDate) return fecha.toDate();
@@ -71,11 +66,10 @@ function compararFechas(fecha1, fecha2) {
     if (!fecha1 || !fecha2) return true;
     const d1 = parseFechaLocal(fecha1);
     const d2 = parseFechaLocal(fecha2);
+    if (!d1 || !d2) return true;
     return d1 <= d2;
 }
 
-// Cuenta los días hábiles ENTRE fechaInicio (exclusiva) y fechaFin (inclusiva),
-// saltando sábados, domingos y días festivos.
 function calcularDiasHabiles(fechaInicio, fechaFin) {
     const inicio = parseFechaLocal(fechaInicio);
     const fin = parseFechaLocal(fechaFin);
@@ -87,9 +81,7 @@ function calcularDiasHabiles(fechaInicio, fechaFin) {
     const end = new Date(fin);
     end.setHours(0, 0, 0, 0);
 
-    if (current >= end) {
-        return 0;
-    }
+    if (current >= end) return 0;
 
     const diasFestivos = [
         '2026-01-01', '2026-02-02', '2026-03-16', '2026-05-01',
@@ -114,10 +106,7 @@ function calcularDiasHabiles(fechaInicio, fechaFin) {
     return count;
 }
 
-// ============ HELPERS: ENVÍO PRINCIPAL VS. ENVÍOS ADICIONALES ============
-// El envío principal (Paso 5) es SIEMPRE envios[0]: el primero que se registra.
-// Todo lo que se agregue después (Paso 6) son envíos adicionales y NUNCA deben
-// mezclarse ni modificar la información del envío principal.
+// ============ HELPERS ============
 function obtenerEnvioPrincipal() {
     const envios = ticketData.enviosDependencia || [];
     return envios.length > 0 ? envios[0] : null;
@@ -128,7 +117,6 @@ function obtenerEnviosAdicionales() {
     return envios.length > 1 ? envios.slice(1) : [];
 }
 
-// ============ OBTENER FECHA DE RECIBIDO DEL PRIMER ENVÍO ============
 function obtenerFechaRecibidoPrimerEnvio() {
     const principal = obtenerEnvioPrincipal();
     return principal ? (principal.fechaRecibido || null) : null;
@@ -137,7 +125,7 @@ function obtenerFechaRecibidoPrimerEnvio() {
 // ============ MOSTRAR LOADING ============
 function mostrarLoading(btn) {
     const textoOriginal = btn.textContent;
-    btn.textContent = 'Procesando...';
+    btn.textContent = '⏳ Procesando...';
     btn.disabled = true;
     return textoOriginal;
 }
@@ -162,7 +150,7 @@ async function cargarTicket() {
 
     } catch (error) {
         console.error('Error al cargar ticket:', error);
-        alert('Error al cargar el ticket');
+        alert('Error al cargar el ticket: ' + error.message);
     }
 }
 
@@ -187,13 +175,18 @@ function puedeAvanzar(pasoRequerido) {
                 alert('Primero debes registrar el envío a dependencia (Paso 5)');
                 return false;
             }
+            // Si ya hay respuesta de dependencia, no permitir más envíos adicionales
+            const respuestasDep = ticketData.respuestasDependencia || [];
+            if (respuestasDep.length > 0) {
+                alert('Ya se registró la respuesta de la dependencia. No se pueden agregar más envíos adicionales.');
+                return false;
+            }
             break;
         case 7:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
                 alert('Primero debes registrar el envío a dependencia (Paso 5)');
                 return false;
             }
-            // Verificar que el PRIMER envío tenga fecha de recibido
             const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
             if (!fechaRecibido) {
                 alert('Debes actualizar la fecha de recibido del primer envío antes de continuar');
@@ -361,9 +354,6 @@ async function actualizarDatosTicket() {
 }
 
 // ============ PASO 5: MOSTRAR ENVÍO ============
-// Solo debe mostrar/actualizar el envío PRINCIPAL (envios[0]). Los envíos
-// adicionales se muestran aparte en el Paso 6 (cargarEnviosAdicionales) y
-// jamás deben sobreescribir esta sección.
 function mostrarEnvioDependencia() {
     const envioPrincipal = obtenerEnvioPrincipal();
 
@@ -382,37 +372,6 @@ function mostrarEnvioDependencia() {
         fechaElabInput.setAttribute('max', hoy);
         fechaRecInput.setAttribute('max', hoy);
         fechaRecInput.setAttribute('min', minFecha);
-
-        // Evitar acumular listeners duplicados cada vez que se vuelve a
-        // renderizar esta sección (por ejemplo tras recargar el ticket).
-        if (!fechaElabInput.dataset.listenerAttached) {
-            fechaElabInput.addEventListener('change', function() {
-                const fechaElab = this.value;
-                const fechaRecibido = fechaRecInput.value;
-                if (fechaRecibido && fechaElab && !compararFechas(fechaElab, fechaRecibido)) {
-                    fechaRecInput.value = '';
-                    fechaRecInput.style.borderColor = '#dc2626';
-                } else if (fechaRecibido && fechaElab) {
-                    fechaRecInput.style.borderColor = '';
-                }
-            });
-            fechaElabInput.dataset.listenerAttached = 'true';
-        }
-
-        if (!fechaRecInput.dataset.listenerAttached) {
-            fechaRecInput.addEventListener('change', function() {
-                const fechaRecibido = this.value;
-                const fechaElab = fechaElabInput.value;
-                if (fechaRecibido && fechaElab && !compararFechas(fechaElab, fechaRecibido)) {
-                    this.value = '';
-                    this.style.borderColor = '#dc2626';
-                    alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
-                } else if (fechaRecibido && fechaElab) {
-                    this.style.borderColor = '';
-                }
-            });
-            fechaRecInput.dataset.listenerAttached = 'true';
-        }
 
         return;
     }
@@ -463,23 +422,23 @@ function editarFechaRecibido() {
     modal.id = 'modalFechaRecibido';
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); display: flex; justify-content: center;
+        background: rgba(26, 42, 58, 0.6); display: flex; justify-content: center;
         align-items: center; z-index: 9999;
     `;
 
     modal.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
-            <h3 style="margin-bottom: 20px;">Actualizar fecha de recibido</h3>
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <h3 style="margin-bottom: 20px; color: #1a3a5c;">Actualizar fecha de recibido</h3>
             <div class="form-group">
-                <label>Nueva fecha de recibido *</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido *</label>
                 <input type="date" id="nuevaFechaRecibido" 
                        min="${fechaElaboracion}" max="${hoy}"
-                       style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
-                <small style="color: #666; display: block; margin-top: 4px;">La fecha debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)}) y no puede ser futura</small>
+                       style="width: 100%; padding: 10px; border: 2px solid #d0d8e0; border-radius: 6px; font-size: 16px;">
+                <small style="color: #7a8a9a; display: block; margin-top: 4px;">Debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)})</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="btnConfirmarFecha" class="btn-success" style="flex: 1;">Actualizar</button>
-                <button id="btnCancelarFecha" style="flex: 1; background: #6c757d; color: white;">Cancelar</button>
+                <button id="btnCancelarFecha" style="flex: 1; background: #4a5a6a; color: white; border: none; border-radius: 6px; padding: 10px; cursor: pointer;">Cancelar</button>
             </div>
         </div>
     `;
@@ -517,7 +476,6 @@ function editarFechaRecibido() {
     }, 100);
 }
 
-// Actualiza SOLAMENTE envios[0] (el principal). Nunca toca envíos adicionales.
 async function actualizarFechaRecibido(nuevaFecha) {
     try {
         const docRef = db.collection('tickets').doc(ticketId);
@@ -566,7 +524,6 @@ async function registrarEnvioDependencia() {
         return;
     }
 
-    // Validaciones
     const fechaCreacion = ticketData.fechaCreacion;
     if (fechaCreacion) {
         const fechaCreacionStr = new Date(fechaCreacion).toISOString().split('T')[0];
@@ -602,12 +559,8 @@ async function registrarEnvioDependencia() {
         const data = doc.data();
         const enviosActuales = data.enviosDependencia || [];
 
-        // Este flujo (Paso 5) SOLO debe ejecutarse cuando todavía no existe
-        // ningún envío principal. Si ya existe uno, se detiene para no
-        // duplicarlo ni afectarlo — los envíos posteriores deben ir siempre
-        // por "registrarEnvioAdicional" (Paso 6).
         if (enviosActuales.length > 0) {
-            alert('Ya existe un envío principal registrado para este ticket. Usa "Agregar otro envío" (Paso 6) para envíos adicionales.');
+            alert('Ya existe un envío principal registrado para este ticket.');
             ocultarLoading(btn, textoOriginal);
             cargarTicket();
             return;
@@ -620,7 +573,7 @@ async function registrarEnvioDependencia() {
             oficio: oficio,
             descripcion: descripcion,
             usuario: auth.currentUser.email,
-            tipo: 'envio_dependencia' // Este es el principal
+            tipo: 'envio_dependencia'
         };
 
         enviosActuales.push(envio);
@@ -653,9 +606,6 @@ function agregarEnvioAdicional() {
     const fechaCreacion = ticketData.fechaCreacion;
     const minFecha = fechaCreacion ? new Date(fechaCreacion).toISOString().split('T')[0] : '';
 
-    // Obtener la fecha de recibido del PRIMER envío (principal) para calcular
-    // 10 días hábiles después. Un envío adicional nunca debe usar la fecha
-    // de otro envío adicional como referencia.
     const primerEnvio = obtenerEnvioPrincipal();
     let fechaMinimaAdicional = minFecha;
 
@@ -679,7 +629,7 @@ function agregarEnvioAdicional() {
     const div = document.createElement('div');
     div.className = 'envio-adicional';
     div.innerHTML = `
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #17a2b8;">
+        <div>
             <h4>Envío adicional #${container.querySelectorAll('.envio-adicional').length + 1}</h4>
             <div class="form-row">
                 <div class="form-group full-width">
@@ -702,11 +652,10 @@ function agregarEnvioAdicional() {
                 </div>
             </div>
             <button onclick="registrarEnvioAdicional(this)" class="btn-success" style="margin-top: 10px;">Registrar envío</button>
-            <button onclick="this.parentElement.remove()" style="background: #dc3545; margin-top: 10px; margin-left: 10px; color: white;">Eliminar</button>
+            <button onclick="this.parentElement.remove()" style="background: #8b1a1a; margin-top: 10px; margin-left: 10px; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Eliminar</button>
         </div>
     `;
 
-    // Event listeners para validación de fechas en envío adicional
     const fechaElabInput = div.querySelector('.fecha-elaboracion-adicional');
     const fechaRecInput = div.querySelector('.fecha-recibido-adicional');
 
@@ -715,7 +664,7 @@ function agregarEnvioAdicional() {
         const fechaRec = fechaRecInput.value;
         if (fechaRec && fechaElab && !compararFechas(fechaElab, fechaRec)) {
             fechaRecInput.value = '';
-            fechaRecInput.style.borderColor = '#dc2626';
+            fechaRecInput.style.borderColor = '#8b1a1a';
         } else if (fechaRec && fechaElab) {
             fechaRecInput.style.borderColor = '';
         }
@@ -726,7 +675,7 @@ function agregarEnvioAdicional() {
         const fechaElab = fechaElabInput.value;
         if (fechaRec && fechaElab && !compararFechas(fechaElab, fechaRec)) {
             this.value = '';
-            this.style.borderColor = '#dc2626';
+            this.style.borderColor = '#8b1a1a';
             alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
         } else if (fechaRec && fechaElab) {
             this.style.borderColor = '';
@@ -736,10 +685,6 @@ function agregarEnvioAdicional() {
     container.appendChild(div);
 }
 
-// Este flujo SOLO agrega un elemento nuevo al final del arreglo
-// enviosDependencia. NUNCA lee, modifica ni sobreescribe envios[0]
-// (el envío principal del Paso 5) — así se evita el bug donde registrar
-// un envío adicional alteraba la información del Paso 5.
 async function registrarEnvioAdicional(btn) {
     const textoOriginal = mostrarLoading(btn);
     const parent = btn.parentElement;
@@ -755,7 +700,6 @@ async function registrarEnvioAdicional(btn) {
         return;
     }
 
-    // Validaciones
     const fechaCreacion = ticketData.fechaCreacion;
     if (fechaCreacion) {
         const fechaCreacionStr = new Date(fechaCreacion).toISOString().split('T')[0];
@@ -813,14 +757,11 @@ async function registrarEnvioAdicional(btn) {
             return;
         }
 
-        // Solo se agrega al final; envios[0] (principal) queda intacto.
         enviosActuales.push(envio);
 
         await docRef.update({
             enviosDependencia: enviosActuales,
             fechaActualizacion: new Date().toISOString()
-            // Nota: a propósito NO se toca "estado" ni "fechaEnvioDependencia"
-            // aquí, porque esos campos pertenecen al envío principal (Paso 5).
         });
 
         await agregarHistorial('Envío adicional a dependencia', 'Oficio: ' + oficio + ' - ' + descripcion);
@@ -841,14 +782,24 @@ function cargarEnviosAdicionales() {
     const adicionales = obtenerEnviosAdicionales();
 
     const paso6 = document.getElementById('paso6');
-    if (adicionales.length > 0) {
-        paso6.style.display = 'block';
+    const btnAgregar = document.getElementById('btnAgregarEnvioAdicional');
+
+    // Verificar si ya hay respuesta de dependencia para ocultar el botón
+    const respuestasDep = ticketData.respuestasDependencia || [];
+    const tieneRespuestaDep = respuestasDep.length > 0;
+
+    if (tieneRespuestaDep) {
+        paso6.style.display = 'none';
+        return;
     }
 
     if (adicionales.length === 0) {
-        container.innerHTML = '<p style="color: #999;">No hay envíos adicionales</p>';
+        container.innerHTML = '<p style="color: #7a8a9a;">No hay envíos adicionales</p>';
+        if (btnAgregar) btnAgregar.style.display = 'inline-block';
         return;
     }
+
+    if (btnAgregar) btnAgregar.style.display = 'inline-block';
 
     let html = '';
     adicionales.forEach((envio, index) => {
@@ -859,13 +810,13 @@ function cargarEnviosAdicionales() {
         const tieneFechaRecibido = !!envio.fechaRecibido;
 
         html += `
-            <div class="envio-item" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #17a2b8;">
+            <div class="envio-item">
                 <p><strong>Envío adicional #${index + 1}</strong> - ${formatearFechaHora(fecha)}</p>
                 <p><strong>Oficio:</strong> ${envio.oficio}</p>
                 <p><strong>Descripción:</strong> ${envio.descripcion}</p>
                 <p><small>Elaboración: ${fechaElab ? formatearFecha(fechaElab) : 'N/A'} | Recibido: ${fechaRec ? formatearFecha(fechaRec) : 'No registrado'}</small></p>
                 <p><small>Por: ${envio.usuario}</small></p>
-                ${!tieneFechaRecibido ? `<button onclick="editarFechaRecibidoAdicional('${index}')" class="btn-secondary" style="margin-top: 5px; font-size: 12px;">Actualizar fecha de recibido</button>` : ''}
+                ${!tieneFechaRecibido ? `<button onclick="editarFechaRecibidoAdicional('${index}')" class="btn-secondary" style="margin-top: 5px; font-size: 12px; padding: 5px 12px;">Actualizar fecha de recibido</button>` : ''}
             </div>
         `;
     });
@@ -890,23 +841,23 @@ function editarFechaRecibidoAdicional(index) {
     modal.id = 'modalFechaRecibidoAdicional';
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); display: flex; justify-content: center;
+        background: rgba(26, 42, 58, 0.6); display: flex; justify-content: center;
         align-items: center; z-index: 9999;
     `;
 
     modal.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
-            <h3 style="margin-bottom: 20px;">Actualizar fecha de recibido</h3>
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <h3 style="margin-bottom: 20px; color: #1a3a5c;">Actualizar fecha de recibido</h3>
             <div class="form-group">
-                <label>Nueva fecha de recibido *</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido *</label>
                 <input type="date" id="nuevaFechaRecibidoAdicional" 
                        min="${fechaElaboracion}" max="${hoy}"
-                       style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
-                <small style="color: #666; display: block; margin-top: 4px;">La fecha debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)}) y no puede ser futura</small>
+                       style="width: 100%; padding: 10px; border: 2px solid #d0d8e0; border-radius: 6px; font-size: 16px;">
+                <small style="color: #7a8a9a; display: block; margin-top: 4px;">Debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)})</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="btnConfirmarFechaAdicional" class="btn-success" style="flex: 1;">Actualizar</button>
-                <button id="btnCancelarFechaAdicional" style="flex: 1; background: #6c757d; color: white;">Cancelar</button>
+                <button id="btnCancelarFechaAdicional" style="flex: 1; background: #4a5a6a; color: white; border: none; border-radius: 6px; padding: 10px; cursor: pointer;">Cancelar</button>
             </div>
         </div>
     `;
@@ -944,7 +895,6 @@ function editarFechaRecibidoAdicional(index) {
     }, 100);
 }
 
-// Actualiza únicamente el envío adicional correspondiente (nunca envios[0]).
 async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
     try {
         const docRef = db.collection('tickets').doc(ticketId);
@@ -952,7 +902,6 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
         const data = doc.data();
         const envios = data.enviosDependencia || [];
 
-        // Los envíos adicionales viven a partir del índice 1 en adelante.
         const realIndex = index + 1;
 
         if (realIndex >= envios.length || envios[realIndex].tipo !== 'envio_adicional') {
@@ -980,7 +929,27 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
 // ============ PASO 7: RESPUESTA DE DEPENDENCIA ============
 function mostrarRespuestaDependencia() {
     const respuestas = ticketData.respuestasDependencia || [];
-    if (respuestas.length === 0) {
+    const tieneRespuestaDep = respuestas.length > 0;
+
+    // Si ya hay respuesta de dependencia, OCULTAR el botón de "Agregar otro envío"
+    const paso6Div = document.getElementById('paso6');
+    const btnAgregar = document.getElementById('btnAgregarEnvioAdicional');
+
+    if (tieneRespuestaDep) {
+        if (paso6Div) paso6Div.style.display = 'none';
+        if (btnAgregar) btnAgregar.style.display = 'none';
+    } else {
+        // Si no hay respuesta, mostrar el paso 6 (si hay envíos adicionales o no)
+        const enviosAdicionales = obtenerEnviosAdicionales();
+        if (paso6Div) {
+            paso6Div.style.display = 'block';
+        }
+        if (btnAgregar) {
+            btnAgregar.style.display = 'inline-block';
+        }
+    }
+
+    if (!tieneRespuestaDep) {
         document.getElementById('formRespuestaDependencia').style.display = 'block';
         document.getElementById('respuestaDependenciaRegistrada').style.display = 'none';
 
@@ -1105,7 +1074,6 @@ function mostrarRespuestaCiudadano() {
     document.getElementById('respuestaCiudadanoRegistrada').style.display = 'block';
 
     const fecha = new Date(ultimaRespuesta.fecha);
-    // La fecha de respuesta al ciudadano NUNCA lleva hora: solo se captura el día.
     const fechaResp = ultimaRespuesta.fechaRespuesta ? ultimaRespuesta.fechaRespuesta : null;
 
     document.getElementById('respuestaCiudadanoData').innerHTML = `
@@ -1217,10 +1185,6 @@ async function generarReporte() {
 }
 
 // ============ GENERAR PDF DEL REPORTE ============
-// NOTA: A propósito este reporte NO incluye el historial de seguimiento
-// interno (historialSeguimiento); solo incluye la información sustantiva del
-// caso (datos generales, envío principal, envíos adicionales, respuestas de
-// dependencia y respuestas al ciudadano).
 function generarPDFReporte() {
     return new Promise((resolve, reject) => {
         try {
@@ -1233,9 +1197,6 @@ function generarPDFReporte() {
             const margin = 15;
             let y = margin;
 
-            // Verifica si queda suficiente espacio en la página; si no,
-            // agrega una página nueva ANTES de dibujar el contenido
-            // (evita que el texto se corte al llegar al borde inferior).
             function checkPageBreak(alturaNecesaria) {
                 if (y + alturaNecesaria > pageHeight - margin) {
                     doc.addPage();
@@ -1243,7 +1204,7 @@ function generarPDFReporte() {
                 }
             }
 
-            function addLine(yPos, color = '#2563eb') {
+            function addLine(yPos, color = '#1a3a5c') {
                 doc.setDrawColor(color);
                 doc.setLineWidth(0.5);
                 doc.line(margin, yPos, pageWidth - margin, yPos);
@@ -1254,7 +1215,7 @@ function generarPDFReporte() {
                 checkPageBreak(10);
                 doc.setFontSize(13);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(37, 99, 235);
+                doc.setTextColor(26, 58, 92);
                 doc.text(texto, margin, y);
                 y += 6;
             }
@@ -1262,7 +1223,7 @@ function generarPDFReporte() {
             // HEADER
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
+            doc.setTextColor(26, 58, 92);
             doc.text('REPORTE DE SEGUIMIENTO', pageWidth / 2, y, { align: 'center' });
             y += 10;
 
@@ -1272,7 +1233,7 @@ function generarPDFReporte() {
             y += 7;
 
             doc.setFontSize(10);
-            doc.setTextColor(85, 85, 85);
+            doc.setTextColor(100, 100, 100);
             doc.text('Generado: ' + new Date().toLocaleString('es-MX'), pageWidth / 2, y, { align: 'center' });
             y += 7;
 
@@ -1282,7 +1243,6 @@ function generarPDFReporte() {
             // 1. DATOS GENERALES
             addSectionTitle('1. DATOS GENERALES');
 
-            // Calcular días hábiles para el reporte
             let diasHabilesLabel = 'No disponible';
             const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
             const respCiudadano = t.respuestasCiudadano || [];
@@ -1340,7 +1300,7 @@ function generarPDFReporte() {
             y = addLine(y);
             y += 5;
 
-            // 2. ENVÍO A DEPENDENCIA (PRINCIPAL) — siempre envios[0]
+            // 2. ENVÍO A DEPENDENCIA (PRINCIPAL)
             const envios = t.enviosDependencia || [];
             const envioPrincipal = envios.length > 0 ? envios[0] : null;
 
@@ -1367,7 +1327,7 @@ function generarPDFReporte() {
                 doc.text(descLinesPrincipal, margin + 3, y);
                 y += descLinesPrincipal.length * 4;
 
-                doc.setTextColor(85, 85, 85);
+                doc.setTextColor(100, 100, 100);
                 doc.setFontSize(9);
                 doc.text('Elaboración: ' + fechaElab + ' | Recibido: ' + fechaRec, margin + 3, y);
                 y += 4;
@@ -1375,7 +1335,7 @@ function generarPDFReporte() {
                 y += 5;
             }
 
-            // 2.1 ENVÍOS ADICIONALES A DEPENDENCIA — envios[1..n]
+            // 2.1 ENVÍOS ADICIONALES
             const enviosAdicionales = envios.length > 1 ? envios.slice(1) : [];
             if (enviosAdicionales.length > 0) {
                 y += 2;
@@ -1402,7 +1362,7 @@ function generarPDFReporte() {
                     doc.text(descLines, margin + 3, y);
                     y += descLines.length * 4;
 
-                    doc.setTextColor(85, 85, 85);
+                    doc.setTextColor(100, 100, 100);
                     doc.setFontSize(9);
                     doc.text('Elaboración: ' + fechaElab + ' | Recibido: ' + fechaRec, margin + 3, y);
                     y += 4;
@@ -1439,7 +1399,7 @@ function generarPDFReporte() {
                     doc.text(descLines, margin + 3, y);
                     y += descLines.length * 4;
 
-                    doc.setTextColor(85, 85, 85);
+                    doc.setTextColor(100, 100, 100);
                     doc.setFontSize(9);
                     doc.text('Fecha de respuesta: ' + fechaResp, margin + 3, y);
                     y += 4;
@@ -1458,7 +1418,6 @@ function generarPDFReporte() {
                 addSectionTitle('4. RESPUESTAS AL CIUDADANO');
 
                 respuestasCiudadanoList.forEach((resp, index) => {
-                    // Sin hora: la fecha de respuesta al ciudadano solo registra el día.
                     const fechaResp = resp.fechaRespuesta ? formatearFecha(resp.fechaRespuesta) : 'N/A';
                     const descLines = doc.splitTextToSize('Descripción: ' + resp.descripcion, pageWidth - (margin * 2) - 3);
 
@@ -1475,7 +1434,7 @@ function generarPDFReporte() {
                     doc.text(descLines, margin, y);
                     y += descLines.length * 4;
 
-                    doc.setTextColor(85, 85, 85);
+                    doc.setTextColor(100, 100, 100);
                     doc.setFontSize(9);
                     doc.text('Fecha de respuesta: ' + fechaResp, margin + 3, y);
                     y += 4;
@@ -1491,7 +1450,7 @@ function generarPDFReporte() {
             y += 3;
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(85, 85, 85);
+            doc.setTextColor(100, 100, 100);
             doc.text('Reporte generado automáticamente el ' + new Date().toLocaleString('es-MX'), pageWidth / 2, y, { align: 'center' });
             y += 4;
             doc.setTextColor(150, 150, 150);
@@ -1515,33 +1474,35 @@ function actualizarContadorDias() {
     const paso6Div = document.getElementById('paso6');
 
     if (ticketData.asunto === 'no_procede' || ticketData.estado === 'cerrado' || ticketData.estado === 'resuelto') {
-        contadorDiv.innerHTML = '<p style="color: #999;">Ticket cerrado o resuelto</p>';
+        contadorDiv.innerHTML = '<p style="color: #7a8a9a;">Ticket cerrado o resuelto</p>';
         alertaDiv.style.display = 'none';
-        paso6Div.style.display = 'none';
+        if (paso6Div) paso6Div.style.display = 'none';
         return;
     }
 
     const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
     if (!fechaRecibido) {
         contadorDiv.innerHTML = `
-            <div style="background: #fef3c7; padding: 15px; border-radius: 8px;">
+            <div style="background: #fcf3e0; padding: 15px; border-radius: 8px;">
                 <p><strong>No se puede contar días hábiles</strong></p>
                 <p>La fecha de recibido en dependencia no está registrada.</p>
                 <p>Por favor, actualiza la fecha de recibido para comenzar el conteo.</p>
             </div>
         `;
         alertaDiv.style.display = 'none';
-        paso6Div.style.display = 'none';
+        if (paso6Div) paso6Div.style.display = 'none';
         return;
     }
 
     const diasHabiles = calcularDiasHabiles(fechaRecibido, fechaHoy());
     diasHabilesTranscurridos = diasHabiles;
 
+    const diasClass = diasHabiles < 10 ? 'ok' : (diasHabiles < 15 ? 'warning' : 'danger');
+
     contadorDiv.innerHTML = `
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+        <div class="dias-box">
             <p><strong>Fecha de recibido (primer envío):</strong> ${formatearFecha(fechaRecibido)}</p>
-            <p><strong>Días hábiles transcurridos:</strong> <span style="font-size: 1.5em; font-weight: bold; ${diasHabiles >= 10 ? 'color: #dc2626;' : 'color: #16a34a;'}">${diasHabiles}</span></p>
+            <p><strong>Días hábiles transcurridos:</strong> <span class="dias-number ${diasClass}">${diasHabiles}</span></p>
             <p><strong>Límite:</strong> 10 días hábiles</p>
             ${diasHabiles < 10 ? '<p><strong>Días restantes:</strong> ' + (10 - diasHabiles) + '</p>' : ''}
         </div>
@@ -1552,7 +1513,7 @@ function actualizarContadorDias() {
         document.getElementById('mensajeVencimiento').textContent =
             'Este ticket tiene ' + diasHabiles + ' días hábiles sin respuesta. Se recomienda enviar un nuevo oficio.';
 
-        paso6Div.style.display = 'block';
+        if (paso6Div) paso6Div.style.display = 'block';
 
         if (ticketData.estado !== 'vencido' && ticketData.estado !== 'resuelto' && ticketData.estado !== 'cerrado') {
             db.collection('tickets').doc(ticketId).update({
@@ -1564,7 +1525,11 @@ function actualizarContadorDias() {
         }
     } else {
         alertaDiv.style.display = 'none';
-        paso6Div.style.display = 'none';
+        // Solo ocultar paso6 si no hay respuesta de dependencia
+        const respuestasDep = ticketData.respuestasDependencia || [];
+        if (respuestasDep.length === 0 && paso6Div) {
+            paso6Div.style.display = 'none';
+        }
     }
 }
 
@@ -1599,7 +1564,7 @@ function cargarHistorial() {
     const historial = ticketData.historialSeguimiento || [];
 
     if (historial.length === 0) {
-        container.innerHTML = '<p style="color: #999;">Sin historial de seguimiento</p>';
+        container.innerHTML = '<p style="color: #7a8a9a;">Sin historial de seguimiento</p>';
         return;
     }
 
@@ -1608,9 +1573,10 @@ function cargarHistorial() {
         const fecha = new Date(h.fecha);
         html += `
             <div class="historial-item">
-                <p><strong><i class="fas fa-tag"></i> ${h.accion}</strong></p>
-                <p><i class="fas fa-clock"></i> <strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
-                <p><i class="fas fa-user"></i> <strong>Por:</strong> ${h.usuario || 'N/A'}</p>
+                <p><strong>📌 ${h.accion}</strong></p>
+                <p>📅 <strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
+                <p>👤 <strong>Por:</strong> ${h.usuario || 'N/A'}</p>
+                ${h.descripcion ? `<p>📝 ${h.descripcion}</p>` : ''}
             </div>
         `;
     });
@@ -1626,4 +1592,4 @@ setInterval(() => {
     }
 }, 60000);
 
-console.log('seguimiento.js cargado correctamente');
+console.log('✅ seguimiento.js cargado correctamente');

@@ -155,6 +155,82 @@ function mostrarConfirmacion(data) {
     `;
 }
 
+// ============ GENERAR PDF (CORREGIDO) ============
+function generarPDF() {
+    const element = document.getElementById('reciboContent');
+    const btn = document.querySelector('[onclick="generarPDF()"]');
+    const textoOriginal = btn.textContent;
+    btn.textContent = '⏳ Generando PDF...';
+    btn.disabled = true;
+
+    // ANCHO_RECIBO fijo para que el render sea predecible
+    const ANCHO_RECIBO = 600;
+
+    // Clonar el elemento para no afectar el DOM visible
+    const clone = element.cloneNode(true);
+    clone.style.width = ANCHO_RECIBO + 'px';
+    clone.style.maxWidth = ANCHO_RECIBO + 'px';
+    clone.style.boxSizing = 'border-box';
+    clone.style.padding = '20px';
+    clone.style.fontSize = '14px';
+    clone.style.fontFamily = 'Arial, sans-serif';
+    clone.style.color = '#333';
+    clone.style.backgroundColor = '#ffffff';
+    clone.style.margin = '0';
+    clone.style.borderRadius = '8px';
+    clone.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+
+    // Asegurar que todos los elementos tengan estilos inline consistentes
+    clone.querySelectorAll('*').forEach(el => {
+        el.style.fontFamily = 'Arial, sans-serif';
+    });
+
+    // Contenedor temporal, sacado de pantalla
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '-10000px';
+    wrapper.style.width = ANCHO_RECIBO + 'px';
+    wrapper.style.padding = '20px';
+    wrapper.style.backgroundColor = '#ffffff';
+    wrapper.style.boxSizing = 'content-box';
+    wrapper.appendChild(clone);
+
+    document.body.appendChild(wrapper);
+
+    const opt = {
+        margin: 10,
+        filename: `recibo-${new Date().getTime()}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            windowWidth: ANCHO_RECIBO + 40
+        },
+        jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(wrapper).save()
+        .then(() => {
+            if (wrapper.parentNode) document.body.removeChild(wrapper);
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+        })
+        .catch(err => {
+            console.error('Error al generar PDF:', err);
+            alert('Error al generar el PDF. Por favor, intenta de nuevo.');
+            if (wrapper.parentNode) document.body.removeChild(wrapper);
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+        });
+}
+
 // ============ VALIDACIONES ============
 function validarEmailFormato(email) {
     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -204,92 +280,6 @@ function volverAlFormulario() {
         behavior: 'smooth',
         block: 'start'
     });
-}
-
-// ============ GENERAR PDF (CORREGIDO) ============
-// Antes: se fijaba html2canvas "width/height" al scrollWidth/scrollHeight del
-// wrapper, lo cual genera un desajuste de escala frente al "windowWidth" real
-// usado por html2canvas para calcular el layout, provocando recibos con
-// contenido recortado, desproporcionado o en blanco. Además el wrapper se
-// insertaba en el flujo normal del documento (sin sacarlo de pantalla),
-// causando saltos visuales de la página mientras se generaba el PDF.
-function generarPDF() {
-    const element = document.getElementById('reciboContent');
-    const btn = document.querySelector('[onclick="generarPDF()"]');
-    const textoOriginal = btn.textContent;
-    btn.textContent = '⏳ Generando PDF...';
-    btn.disabled = true;
-
-    // Ancho fijo con el que se va a "imprimir" el recibo, para que el
-    // render (y su escala) sea siempre predecible sin importar el tamaño
-    // de pantalla del usuario.
-    const ANCHO_RECIBO = 600;
-
-    // Clonar el elemento para no afectar el DOM visible
-    const clone = element.cloneNode(true);
-    clone.style.width = ANCHO_RECIBO + 'px';
-    clone.style.maxWidth = ANCHO_RECIBO + 'px';
-    clone.style.boxSizing = 'border-box';
-    clone.style.padding = '15px';
-    clone.style.fontSize = '14px';
-    clone.style.fontFamily = 'Arial, sans-serif';
-    clone.style.color = '#333';
-    clone.style.backgroundColor = '#ffffff';
-    clone.style.margin = '0';
-
-    // Asegurar que todos los elementos tengan estilos inline consistentes
-    clone.querySelectorAll('*').forEach(el => {
-        el.style.fontFamily = 'Arial, sans-serif';
-    });
-
-    // Contenedor temporal, sacado de pantalla (no afecta el layout visible
-    // ni provoca saltos de scroll mientras se genera el PDF).
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '-10000px';
-    wrapper.style.width = ANCHO_RECIBO + 'px';
-    wrapper.style.padding = '20px';
-    wrapper.style.backgroundColor = '#ffffff';
-    wrapper.style.boxSizing = 'content-box';
-    wrapper.appendChild(clone);
-
-    document.body.appendChild(wrapper);
-
-    const opt = {
-        margin: 10,
-        filename: `recibo-${new Date().getTime()}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            // windowWidth (no width/height) es la forma correcta de fijar el
-            // ancho de referencia para el layout; así html2canvas escala todo
-            // de forma consistente en vez de recortar o deformar el contenido.
-            windowWidth: ANCHO_RECIBO + 40
-        },
-        jsPDF: {
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'portrait'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
-    html2pdf().set(opt).from(wrapper).save()
-        .then(() => {
-            if (wrapper.parentNode) document.body.removeChild(wrapper);
-            btn.textContent = textoOriginal;
-            btn.disabled = false;
-        })
-        .catch(err => {
-            console.error('Error al generar PDF:', err);
-            alert('Error al generar el PDF. Por favor, intenta de nuevo.');
-            if (wrapper.parentNode) document.body.removeChild(wrapper);
-            btn.textContent = textoOriginal;
-            btn.disabled = false;
-        });
 }
 
 // ============ VALIDACIÓN EN TIEMPO REAL ============

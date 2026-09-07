@@ -5,37 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seguimiento de Ticket</title>
     <link rel="stylesheet" href="css/seguimiento.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="seguimiento-container">
         <header>
-            <h1>Segumiento de Ticket</h1>
-            <div>
-                <span id="userEmail" style="margin-right: 15px; color: #666;"></span>
-                <button onclick="window.location.href='admin.html'" style="background: #6c757d; color: white;">Volver</button>
+            <h1>Seguimiento de Ticket</h1>
+            <div class="header-actions">
+                <span id="userEmail"></span>
+                <button onclick="window.location.href='admin.html'" class="btn-volver">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </button>
             </div>
         </header>
 
-        <!-- Informacion del Ticket -->
+        <!-- Información del Ticket -->
         <section class="ticket-info-header">
             <div class="info-grid">
                 <div><strong>Folio:</strong> <span id="folioTicket">-</span></div>
                 <div><strong>Nombre:</strong> <span id="nombreTicket">-</span></div>
                 <div><strong>Correo:</strong> <span id="emailTicket">-</span></div>
-                <div><strong>Telefono:</strong> <span id="telefonoTicket">-</span></div>
-                <div><strong>Fecha creacion:</strong> <span id="fechaCreacionTicket">-</span></div>
+                <div><strong>Teléfono:</strong> <span id="telefonoTicket">-</span></div>
+                <div><strong>Fecha creación:</strong> <span id="fechaCreacionTicket">-</span></div>
                 <div><strong>Estado actual:</strong> <span id="estadoTicket" class="estado">-</span></div>
             </div>
             
             <div class="mensaje-usuario-box">
-                <strong>Mensaje del usuario:</strong>
-                <p id="mensajeUsuario" style="margin-top: 8px; padding: 10px; background: white; border-radius: 6px; border: 1px solid #e1e5eb;"></p>
+                <strong><i class="fas fa-comment"></i> Mensaje del usuario:</strong>
+                <p id="mensajeUsuario"></p>
             </div>
         </section>
 
         <!-- PASO 4: Clasificar y asignar -->
         <section class="paso" id="paso4">
-            <h3>Paso 4: Clasificar y asignar</h3>
+            <h3><span class="paso-numero">4</span> Clasificar y asignar</h3>
             <div id="formPaso4">
                 <div class="form-row">
                     <div class="form-group">
@@ -43,7 +46,7 @@
                         <select id="asuntoTicket">
                             <option value="queja">Queja</option>
                             <option value="sugerencia">Sugerencia</option>
-                            <option value="felicitacion">Felicitacion</option>
+                            <option value="felicitacion">Felicitación</option>
                             <option value="otros">Otros</option>
                             <option value="no_procede">No procede</option>
                         </select>
@@ -55,84 +58,93 @@
                             <option value="recursos_humanos">Recursos Humanos</option>
                             <option value="finanzas">Finanzas</option>
                             <option value="operaciones">Operaciones</option>
-                            <option value="atencion_cliente">Atencion al Cliente</option>
-                            <option value="juridico">Juridico</option>
+                            <option value="atencion_cliente">Atención al Cliente</option>
+                            <option value="juridico">Jurídico</option>
                             <option value="compras">Compras</option>
                         </select>
                     </div>
                 </div>
-                <button onclick="actualizarDatosTicket()" class="btn-success">Actualizar datos</button>
+                <button onclick="actualizarDatosTicket()" class="btn-success">
+                    <i class="fas fa-save"></i> Actualizar datos
+                </button>
             </div>
             <div id="paso4Registrado" style="display: none;">
-                <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
-                    <h4 style="color: #155724;">Datos actualizados</h4>
+                <div class="registro-exitoso">
+                    <h4><i class="fas fa-check-circle"></i> Datos actualizados</h4>
                     <div id="paso4Data"></div>
                 </div>
             </div>
         </section>
 
-        <!-- PASO 5: Envio a dependencia -->
+        <!-- PASO 5: Envío a dependencia -->
         <section class="paso" id="paso5" style="display: none;">
-            <h3>Paso 5: Envio a dependencia</h3>
+            <h3><span class="paso-numero">5</span> Envío a dependencia</h3>
             <div id="formEnvioDependencia">
                 <div class="form-row">
                     <div class="form-group full-width">
-                        <label>Descripcion de la accion *</label>
-                        <textarea id="descripcionEnvio" rows="4" placeholder="Describe que se envio a la dependencia..."></textarea>
+                        <label>Descripción de la acción *</label>
+                        <textarea id="descripcionEnvio" rows="4" placeholder="Describe qué se envió a la dependencia..."></textarea>
                     </div>
                     <div class="form-group">
                         <label>Oficio/Número de seguimiento *</label>
                         <input type="text" id="oficioEnvio" placeholder="Ej: OF-2026-001">
                     </div>
                     <div class="form-group">
-                        <label>Fecha de elaboracion *</label>
+                        <label>Fecha de elaboración *</label>
                         <input type="date" id="fechaElaboracion">
                     </div>
                     <div class="form-group">
                         <label>Fecha de recibido en dependencia</label>
                         <input type="date" id="fechaRecibidoDependencia">
-                        <small>Opcional - se puede actualizar despues</small>
+                        <small>Opcional - se puede actualizar después</small>
                     </div>
                 </div>
-                <button onclick="registrarEnvioDependencia()" class="btn-success">Registrar envio</button>
+                <button onclick="registrarEnvioDependencia()" class="btn-success">
+                    <i class="fas fa-paper-plane"></i> Registrar envío
+                </button>
             </div>
             <div id="envioDependenciaRegistrado" style="display: none;">
-                <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
-                    <h4 style="color: #155724;">Envio registrado</h4>
+                <div class="registro-exitoso">
+                    <h4><i class="fas fa-check-circle"></i> Envío registrado</h4>
                     <div id="envioDependenciaData"></div>
-                    <button onclick="editarFechaRecibido()" class="btn-secondary" style="margin-top: 10px;">Actualizar fecha de recibido</button>
+                    <button onclick="editarFechaRecibido()" class="btn-secondary" style="margin-top: 10px;">
+                        <i class="fas fa-edit"></i> Actualizar fecha de recibido
+                    </button>
                 </div>
             </div>
         </section>
 
-        <!-- Contador de dias -->
+        <!-- Contador de días -->
         <section class="paso" id="contadorDias" style="display: none;">
-            <h3>Dias transcurridos desde recibido</h3>
+            <h3><i class="fas fa-clock"></i> Días transcurridos desde recibido</h3>
             <div id="diasContador">
-                <p style="color: #999;">No hay envio registrado</p>
+                <p style="color: #7a8a9a;">No hay envío registrado</p>
             </div>
-            <div id="alertasVencimiento" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 10px;">
-                <strong>Atencion:</strong> <span id="mensajeVencimiento"></span>
+            <div id="alertasVencimiento" style="display: none;">
+                <strong><i class="fas fa-exclamation-triangle"></i> Atención:</strong> 
+                <span id="mensajeVencimiento"></span>
             </div>
         </section>
 
-        <!-- PASO 6: Envios adicionales -->
+        <!-- PASO 6: Envíos adicionales -->
         <section class="paso" id="paso6" style="display: none;">
-            <h3>Envios adicionales a dependencia</h3>
+            <h3><span class="paso-numero">6</span> Envíos adicionales a dependencia</h3>
             <div id="enviosAdicionalesContainer">
-                <p style="color: #999;">No hay envios adicionales</p>
+                <p style="color: #7a8a9a;">No hay envíos adicionales</p>
             </div>
-            <button onclick="agregarEnvioAdicional()" class="btn-secondary">Agregar otro envio</button>
+            <button onclick="agregarEnvioAdicional()" class="btn-secondary" id="btnAgregarEnvioAdicional">
+                <i class="fas fa-plus"></i> Agregar otro envío
+            </button>
         </section>
 
         <!-- PASO 7: Respuesta de la dependencia -->
         <section class="paso" id="paso7" style="display: none;">
-            <h3>Paso 7: Respuesta de la dependencia</h3>
+            <h3><span class="paso-numero">7</span> Respuesta de la dependencia</h3>
             <div id="formRespuestaDependencia">
                 <div class="form-row">
                     <div class="form-group full-width">
-                        <label>Descripcion de la respuesta *</label>
-                        <textarea id="descripcionRespuestaDep" rows="4" placeholder="Que respondio la dependencia?"></textarea>
+                        <label>Descripción de la respuesta *</label>
+                        <textarea id="descripcionRespuestaDep" rows="4" placeholder="¿Qué respondió la dependencia?"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Oficio de respuesta *</label>
@@ -143,11 +155,13 @@
                         <input type="date" id="fechaRespuestaDep">
                     </div>
                 </div>
-                <button onclick="registrarRespuestaDependencia()" class="btn-success">Registrar respuesta</button>
+                <button onclick="registrarRespuestaDependencia()" class="btn-success">
+                    <i class="fas fa-reply"></i> Registrar respuesta
+                </button>
             </div>
             <div id="respuestaDependenciaRegistrada" style="display: none;">
-                <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
-                    <h4 style="color: #155724;">Respuesta de dependencia registrada</h4>
+                <div class="registro-exitoso">
+                    <h4><i class="fas fa-check-circle"></i> Respuesta de dependencia registrada</h4>
                     <div id="respuestaDependenciaData"></div>
                 </div>
             </div>
@@ -155,23 +169,25 @@
 
         <!-- PASO 8: Respuesta al ciudadano -->
         <section class="paso" id="paso8" style="display: none;">
-            <h3>Paso 8: Respuesta al ciudadano</h3>
+            <h3><span class="paso-numero">8</span> Respuesta al ciudadano</h3>
             <div id="formRespuestaCiudadano">
                 <div class="form-row">
                     <div class="form-group full-width">
-                        <label>Descripcion de la respuesta al ciudadano *</label>
-                        <textarea id="descripcionRespuestaCiudadano" rows="4" placeholder="Escribe la respuesta que se dara al ciudadano..."></textarea>
+                        <label>Descripción de la respuesta al ciudadano *</label>
+                        <textarea id="descripcionRespuestaCiudadano" rows="4" placeholder="Escribe la respuesta que se dará al ciudadano..."></textarea>
                     </div>
                     <div class="form-group">
                         <label>Fecha de respuesta *</label>
                         <input type="date" id="fechaRespuestaCiudadano">
                     </div>
                 </div>
-                <button onclick="registrarRespuestaCiudadano()" class="btn-success">Registrar respuesta al ciudadano</button>
+                <button onclick="registrarRespuestaCiudadano()" class="btn-success">
+                    <i class="fas fa-user-check"></i> Registrar respuesta al ciudadano
+                </button>
             </div>
             <div id="respuestaCiudadanoRegistrada" style="display: none;">
-                <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
-                    <h4 style="color: #155724;">Respuesta al ciudadano registrada</h4>
+                <div class="registro-exitoso">
+                    <h4><i class="fas fa-check-circle"></i> Respuesta al ciudadano registrada</h4>
                     <div id="respuestaCiudadanoData"></div>
                 </div>
             </div>
@@ -179,23 +195,28 @@
 
         <!-- PASO 9: Generar reporte -->
         <section class="paso" id="paso9" style="display: none;">
-            <h3>Paso 9: Generar reporte final</h3>
-            <p style="color: #666; margin-bottom: 15px;">Genera el reporte completo de todo el proceso del ticket. Esto marcara el ticket como RESUELTO.</p>
-            <button onclick="generarReporte()" class="btn-success" style="font-size: 1.1em;">Generar reporte y cerrar ticket</button>
+            <h3><span class="paso-numero">9</span> Generar reporte final</h3>
+            <p style="color: #4a5a6a; margin-bottom: 15px;">
+                <i class="fas fa-info-circle"></i> Genera el reporte completo de todo el proceso del ticket. 
+                Esto marcará el ticket como <strong>RESUELTO</strong>.
+            </p>
+            <button onclick="generarReporte()" class="btn-success" style="font-size: 1.1em; padding: 12px 30px;">
+                <i class="fas fa-file-pdf"></i> Generar reporte y cerrar ticket
+            </button>
         </section>
 
         <!-- Historial completo -->
         <section class="paso" id="historialCompleto">
-            <h3>Historial completo</h3>
+            <h3><i class="fas fa-history"></i> Historial completo</h3>
             <div id="historialContainer">
-                <p style="color: #999;">Cargando historial...</p>
+                <p style="color: #7a8a9a;">Cargando historial...</p>
             </div>
         </section>
 
-        <!-- Boton volver al dashboard -->
-        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f2f5;">
-            <button onclick="window.location.href='admin.html'" style="background: #6c757d; padding: 12px 40px; font-size: 16px; color: white;">
-                Regresar al Dashboard de Administrador
+        <!-- Botón volver al dashboard -->
+        <div class="volver-dashboard">
+            <button onclick="window.location.href='admin.html'">
+                <i class="fas fa-arrow-left"></i> Regresar al Dashboard de Administrador
             </button>
         </div>
     </div>
