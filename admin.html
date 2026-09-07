@@ -20,33 +20,52 @@
 
         <!-- ESTADÍSTICAS -->
         <section class="stats">
-            <div class="stat-card stat-total">
-                <span class="stat-number" id="totalTickets">0</span>
-                <span class="stat-label">Total</span>
+            <div class="stats-group">
+                <h4><i class="fas fa-circle"></i> Por Estado</h4>
+                <div class="stats-cards">
+                    <div class="stat-card stat-total">
+                        <span class="stat-number" id="totalTickets">0</span>
+                        <span class="stat-label">Total</span>
+                    </div>
+                    <div class="stat-card stat-pendientes">
+                        <span class="stat-number" id="pendientes">0</span>
+                        <span class="stat-label">Pendientes</span>
+                    </div>
+                    <div class="stat-card stat-revision">
+                        <span class="stat-number" id="enRevision">0</span>
+                        <span class="stat-label">En revisión</span>
+                    </div>
+                    <div class="stat-card stat-proceso">
+                        <span class="stat-number" id="enProceso">0</span>
+                        <span class="stat-label">En proceso</span>
+                    </div>
+                    <div class="stat-card stat-vencidos">
+                        <span class="stat-number" id="vencidos">0</span>
+                        <span class="stat-label">Vencidos</span>
+                    </div>
+                    <div class="stat-card stat-resueltos">
+                        <span class="stat-number" id="resueltos">0</span>
+                        <span class="stat-label">Resueltos</span>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card stat-pendientes">
-                <span class="stat-number" id="pendientes">0</span>
-                <span class="stat-label">Pendientes</span>
+
+            <div class="stats-group">
+                <h4><i class="fas fa-building"></i> Por Dependencia</h4>
+                <div class="stats-cards" id="dependenciasStats">
+                    <p style="color: #999; text-align: center; padding: 10px; grid-column: 1 / -1;">Cargando...</p>
+                </div>
             </div>
-            <div class="stat-card stat-revision">
-                <span class="stat-number" id="enRevision">0</span>
-                <span class="stat-label">En revisión</span>
-            </div>
-            <div class="stat-card stat-proceso">
-                <span class="stat-number" id="enProceso">0</span>
-                <span class="stat-label">En proceso</span>
-            </div>
-            <div class="stat-card stat-vencidos">
-                <span class="stat-number" id="vencidos">0</span>
-                <span class="stat-label">Vencidos</span>
-            </div>
-            <div class="stat-card stat-resueltos">
-                <span class="stat-number" id="resueltos">0</span>
-                <span class="stat-label">Resueltos</span>
+
+            <div class="stats-group">
+                <h4><i class="fas fa-tag"></i> Por Asunto</h4>
+                <div class="stats-cards" id="asuntosStats">
+                    <p style="color: #999; text-align: center; padding: 10px; grid-column: 1 / -1;">Cargando...</p>
+                </div>
             </div>
         </section>
 
-        <!-- BÚSQUEDA GLOBAL (Centro) -->
+        <!-- BÚSQUEDA GLOBAL -->
         <section class="busqueda-section">
             <div class="busqueda-global">
                 <i class="fas fa-search search-icon"></i>
@@ -56,7 +75,7 @@
             </div>
         </section>
 
-        <!-- FILTROS (Izquierda) -->
+        <!-- FILTROS -->
         <section class="filtros">
             <div class="filtros-header">
                 <h3><i class="fas fa-filter"></i> Filtros</h3>

@@ -206,68 +206,88 @@ function volverAlFormulario() {
     });
 }
 
-// ============ GENERAR PDF (CORREGIDO - SIN PADDING EXCESIVO) ============
+// ============ GENERAR PDF (CORREGIDO) ============
+// Antes: se fijaba html2canvas "width/height" al scrollWidth/scrollHeight del
+// wrapper, lo cual genera un desajuste de escala frente al "windowWidth" real
+// usado por html2canvas para calcular el layout, provocando recibos con
+// contenido recortado, desproporcionado o en blanco. Además el wrapper se
+// insertaba en el flujo normal del documento (sin sacarlo de pantalla),
+// causando saltos visuales de la página mientras se generaba el PDF.
 function generarPDF() {
     const element = document.getElementById('reciboContent');
-    
-    // Clonar el elemento para no afectar el DOM
+    const btn = document.querySelector('[onclick="generarPDF()"]');
+    const textoOriginal = btn.textContent;
+    btn.textContent = '⏳ Generando PDF...';
+    btn.disabled = true;
+
+    // Ancho fijo con el que se va a "imprimir" el recibo, para que el
+    // render (y su escala) sea siempre predecible sin importar el tamaño
+    // de pantalla del usuario.
+    const ANCHO_RECIBO = 600;
+
+    // Clonar el elemento para no afectar el DOM visible
     const clone = element.cloneNode(true);
+    clone.style.width = ANCHO_RECIBO + 'px';
+    clone.style.maxWidth = ANCHO_RECIBO + 'px';
+    clone.style.boxSizing = 'border-box';
     clone.style.padding = '15px';
     clone.style.fontSize = '14px';
     clone.style.fontFamily = 'Arial, sans-serif';
     clone.style.color = '#333';
-    clone.style.backgroundColor = 'white';
-    clone.style.maxWidth = '600px';
-    clone.style.margin = '0 auto';
-    
-    // Asegurar que todos los elementos tengan estilos inline
-    const allElements = clone.querySelectorAll('*');
-    allElements.forEach(el => {
+    clone.style.backgroundColor = '#ffffff';
+    clone.style.margin = '0';
+
+    // Asegurar que todos los elementos tengan estilos inline consistentes
+    clone.querySelectorAll('*').forEach(el => {
         el.style.fontFamily = 'Arial, sans-serif';
     });
-    
-    // Crear un contenedor temporal
+
+    // Contenedor temporal, sacado de pantalla (no afecta el layout visible
+    // ni provoca saltos de scroll mientras se genera el PDF).
     const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '-10000px';
+    wrapper.style.width = ANCHO_RECIBO + 'px';
     wrapper.style.padding = '20px';
-    wrapper.style.backgroundColor = 'white';
+    wrapper.style.backgroundColor = '#ffffff';
+    wrapper.style.boxSizing = 'content-box';
     wrapper.appendChild(clone);
-    
+
     document.body.appendChild(wrapper);
-    
+
     const opt = {
-        margin: [10, 10, 10, 10],
+        margin: 10,
         filename: `recibo-${new Date().getTime()}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-            scale: 2, 
-            letterRendering: true,
+        html2canvas: {
+            scale: 2,
             useCORS: true,
             logging: false,
-            width: wrapper.scrollWidth,
-            height: wrapper.scrollHeight
+            // windowWidth (no width/height) es la forma correcta de fijar el
+            // ancho de referencia para el layout; así html2canvas escala todo
+            // de forma consistente en vez de recortar o deformar el contenido.
+            windowWidth: ANCHO_RECIBO + 40
         },
-        jsPDF: { 
-            unit: 'mm', 
-            format: 'a4', 
-            orientation: 'portrait' 
-        }
+        jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
-    
-    const btn = document.querySelector('[onclick="generarPDF()"]');
-    btn.textContent = '⏳ Generando PDF...';
-    btn.disabled = true;
-    
+
     html2pdf().set(opt).from(wrapper).save()
         .then(() => {
-            document.body.removeChild(wrapper);
-            btn.textContent = '📄 Guardar recibo en PDF';
+            if (wrapper.parentNode) document.body.removeChild(wrapper);
+            btn.textContent = textoOriginal;
             btn.disabled = false;
         })
         .catch(err => {
             console.error('Error al generar PDF:', err);
             alert('Error al generar el PDF. Por favor, intenta de nuevo.');
-            document.body.removeChild(wrapper);
-            btn.textContent = '📄 Guardar recibo en PDF';
+            if (wrapper.parentNode) document.body.removeChild(wrapper);
+            btn.textContent = textoOriginal;
             btn.disabled = false;
         });
 }

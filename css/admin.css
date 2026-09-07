@@ -86,15 +86,43 @@ header h1 i {
 
 /* ============ ESTADÍSTICAS ============ */
 .stats {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
     margin-bottom: 25px;
+}
+
+.stats-group {
+    background: var(--background);
+    padding: 15px;
+    border-radius: var(--radius);
+    margin-bottom: 15px;
+}
+
+.stats-group:last-child {
+    margin-bottom: 0;
+}
+
+.stats-group h4 {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-group h4 i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
 }
 
 .stat-card {
     background: var(--card-bg);
-    padding: 15px;
+    padding: 10px 8px;
     border-radius: var(--radius);
     text-align: center;
     border: 1px solid var(--border);
@@ -108,25 +136,57 @@ header h1 i {
 
 .stat-number {
     display: block;
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     font-weight: 700;
 }
 
 .stat-label {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: 2px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    word-wrap: break-word;
 }
 
+/* Colores por estado */
 .stat-total .stat-number { color: var(--primary); }
 .stat-pendientes .stat-number { color: var(--warning); }
 .stat-revision .stat-number { color: var(--info); }
 .stat-proceso .stat-number { color: #7c3aed; }
 .stat-vencidos .stat-number { color: var(--danger); }
 .stat-resueltos .stat-number { color: var(--success); }
+
+/* Colores por dependencia */
+.stat-card.dep-sistemas { border-color: #3b82f6; }
+.stat-card.dep-sistemas .stat-number { color: #1d4ed8; }
+.stat-card.dep-recursos_humanos { border-color: #8b5cf6; }
+.stat-card.dep-recursos_humanos .stat-number { color: #7c3aed; }
+.stat-card.dep-finanzas { border-color: #10b981; }
+.stat-card.dep-finanzas .stat-number { color: #059669; }
+.stat-card.dep-operaciones { border-color: #f59e0b; }
+.stat-card.dep-operaciones .stat-number { color: #d97706; }
+.stat-card.dep-atencion_cliente { border-color: #06b6d4; }
+.stat-card.dep-atencion_cliente .stat-number { color: #0891b2; }
+.stat-card.dep-juridico { border-color: #ef4444; }
+.stat-card.dep-juridico .stat-number { color: #dc2626; }
+.stat-card.dep-compras { border-color: #14b8a6; }
+.stat-card.dep-compras .stat-number { color: #0d9488; }
+
+/* Colores por asunto */
+.stat-card.asu-queja { border-color: #ef4444; }
+.stat-card.asu-queja .stat-number { color: #dc2626; }
+.stat-card.asu-sugerencia { border-color: #3b82f6; }
+.stat-card.asu-sugerencia .stat-number { color: #1d4ed8; }
+.stat-card.asu-felicitacion { border-color: #10b981; }
+.stat-card.asu-felicitacion .stat-number { color: #059669; }
+.stat-card.asu-otros { border-color: #8b5cf6; }
+.stat-card.asu-otros .stat-number { color: #7c3aed; }
+.stat-card.asu-no_procede { border-color: #6b7280; }
+.stat-card.asu-no_procede .stat-number { color: #4b5563; }
+.stat-card.asu-pendiente_clasificar { border-color: #f59e0b; }
+.stat-card.asu-pendiente_clasificar .stat-number { color: #d97706; }
 
 /* ============ BÚSQUEDA ============ */
 .busqueda-section {
@@ -400,11 +460,6 @@ tr:hover td {
     font-weight: 600;
 }
 
-.nuevo-ticket td:first-child::before {
-    content: "🆕 ";
-    font-size: 0.8rem;
-}
-
 /* ============ ESTADOS ============ */
 .estado {
     display: inline-block;
@@ -597,12 +652,6 @@ tr:hover td {
 }
 
 /* ============ RESPONSIVE ============ */
-@media (max-width: 1024px) {
-    .stats {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
 @media (max-width: 768px) {
     body {
         padding: 10px;
@@ -618,8 +667,8 @@ tr:hover td {
         text-align: center;
     }
     
-    .stats {
-        grid-template-columns: repeat(2, 1fr);
+    .stats-cards {
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .filtros-grid {
