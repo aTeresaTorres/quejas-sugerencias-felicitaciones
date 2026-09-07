@@ -6,7 +6,7 @@ let unsubscribe = null;
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {
-        document.getElementById('userEmail').textContent = `👤 ${user.email}`;
+        document.getElementById('userEmail').textContent = `${user.email}`;
         cargarTickets();
     } else {
         window.location.href = 'login.html';
@@ -28,9 +28,16 @@ document.getElementById('btnRecargar').addEventListener('click', () => {
 // ============ CARGAR TICKETS CON FILTROS ============
 async function cargarTickets(filtros = {}) {
     const container = document.getElementById('ticketsContainer');
-    container.innerHTML = '<p style="text-align: center;">⏳ Cargando tickets...</p>';
+    container.innerHTML = '<p style="text-align: center;">Cargando tickets...</p>';
     
     try {
+        // Verificar que db existe
+        if (typeof db === 'undefined') {
+            console.error('db no está definido. ¿Firebase se inicializó correctamente?');
+            container.innerHTML = '<p style="color: red;">Error: Firebase no está inicializado</p>';
+            return;
+        }
+        
         let query = db.collection('tickets').orderBy('fechaCreacion', 'desc');
         
         // Aplicar filtros
@@ -44,7 +51,6 @@ async function cargarTickets(filtros = {}) {
             query = query.where('dependencia', '==', filtros.dependencia);
         }
         
-        // Filtros de fecha (requieren lógica adicional)
         const snapshot = await query.get();
         tickets = [];
         
@@ -52,7 +58,7 @@ async function cargarTickets(filtros = {}) {
             const data = doc.data();
             const fecha = data.fechaCreacion?.toDate?.() || new Date();
             
-            // Filtrar por fecha en cliente (porque Firestore no permite múltiples condiciones)
+            // Filtrar por fecha en cliente
             let incluir = true;
             
             if (filtros.fechaInicio) {
@@ -75,7 +81,11 @@ async function cargarTickets(filtros = {}) {
         
     } catch (error) {
         console.error('Error al cargar tickets:', error);
-        container.innerHTML = '<p style="color: red;">❌ Error al cargar los tickets. Intenta recargar.</p>';
+        console.error('Stack trace:', error.stack);
+        container.innerHTML = `
+            <p style="color: red;">Error al cargar los tickets</p>
+            <p style="color: #666; font-size: 0.9em;">${error.message}</p>
+        `;
     }
 }
 
@@ -109,18 +119,26 @@ function renderTickets(tickets) {
         const fecha = ticket.fechaCreacion?.toDate?.() || new Date();
         const estadoClass = ticket.estado || 'pendiente';
         const estadoLabel = {
-            'pendiente': '⏳ Pendiente',
-            'en_revision': '🔍 En revisión',
-            'resuelto': '✅ Resuelto',
-            'cerrado': '🔒 Cerrado'
+            'pendiente': 'Pendiente',
+            'en_revision': 'En revisión',
+            'resuelto': 'Resuelto',
+            'cerrado': 'Cerrado'
         }[estadoClass] || estadoClass;
+        
+        // Mostrar asunto legible
+        const asuntoLabel = {
+            'queja': 'Queja',
+            'sugerencia': 'Sugerencia',
+            'felicitacion': 'Felicitación',
+            'pendiente_clasificar': 'Por clasificar'
+        }[ticket.asunto] || ticket.asunto;
         
         html += `
             <tr>
                 <td><strong>${ticket.folio}</strong></td>
                 <td>${ticket.nombre}</td>
                 <td>${ticket.contacto}</td>
-                <td>${ticket.asunto}</td>
+                <td>${asuntoLabel}</td>
                 <td>${ticket.dependencia || 'Sin asignar'}</td>
                 <td><span class="estado ${estadoClass}">${estadoLabel}</span></td>
                 <td>${fecha.toLocaleDateString('es-MX')}</td>
@@ -163,11 +181,37 @@ async function verTicket(id) {
     
     const fecha = ticket.fechaCreacion?.toDate?.() || new Date();
     const estadoLabel = {
-        'pendiente': '⏳ Pendiente',
-        'en_revision': '🔍 En revisión',
-        'resuelto': '✅ Resuelto',
-        'cerrado': '🔒 Cerrado'
+        'pendiente': 'Pendiente',
+        'en_revision': 'En revisión',
+        'resuelto': 'Resuelto',
+        'cerrado': 'Cerrado'
     }[ticket.estado] || ticket.estado;
+    
+    // Mostrar ambos contactos si existen
+    let contactosHTML = '';
+    if (ticket.email && ticket.telefono) {
+        contactosHTML = `
+            <div><strong>Correo:</strong> ${ticket.email}</div>
+            <div><strong>Teléfono:</strong> ${ticket.telefono}</div>
+        `;
+    } else if (ticket.email) {
+        contactosHTML = `
+            <div><strong>Correo:</strong> ${ticket.email}</div>
+            <div style="color: #999;"><em>Teléfono no proporcionado</em></div>
+        `;
+    } else if (ticket.telefono) {
+        contactosHTML = `
+            <div style="color: #999;"><em>Correo no proporcionado</em></div>
+            <div><strong>Teléfono:</strong> ${ticket.telefono}</div>
+        `;
+    }
+    
+    const asuntoLabel = {
+        'queja': 'Queja',
+        'sugerencia': 'Sugerencia',
+        'felicitacion': 'Felicitación',
+        'pendiente_clasificar': 'Pendiente de clasificar'
+    }[ticket.asunto] || ticket.asunto;
     
     let respuestasHTML = '';
     if (ticket.respuestas && ticket.respuestas.length > 0) {
@@ -188,13 +232,13 @@ async function verTicket(id) {
     }
     
     detalle.innerHTML = `
-        <h2>📋 Ticket ${ticket.folio}</h2>
+        <h2>Ticket ${ticket.folio}</h2>
         
         <div class="ticket-info">
             <div class="info-grid">
                 <div><strong>Nombre:</strong> ${ticket.nombre}</div>
-                <div><strong>Contacto:</strong> ${ticket.contacto}</div>
-                <div><strong>Asunto:</strong> ${ticket.asunto}</div>
+                ${contactosHTML}
+                <div><strong>Asunto:</strong> <span style="font-weight: bold;">${asuntoLabel}</span></div>
                 <div><strong>Dependencia:</strong> ${ticket.dependencia || 'Sin asignar'}</div>
                 <div><strong>Estado:</strong> <span class="estado ${ticket.estado}">${estadoLabel}</span></div>
                 <div><strong>Fecha:</strong> ${fecha.toLocaleString('es-MX')}</div>
@@ -207,33 +251,31 @@ async function verTicket(id) {
         </div>
         
         <div class="respuestas">
-            <h3>💬 Respuestas</h3>
+            <h3>Respuestas</h3>
             ${respuestasHTML}
         </div>
         
         <div class="acciones-ticket">
-            <h3>⚙️ Acciones</h3>
+            <h3>Acciones</h3>
             
-            <!-- ASIGNAR ASUNTO (nuevo) -->
             <div class="form-group">
-                <label>Asignar clasificación:</label>
+                <label>Clasificar asunto:</label>
                 <select id="asignarAsunto">
-                    <option value="queja" ${ticket.asunto === 'queja' ? 'selected' : ''}>⚠️ Queja</option>
-                    <option value="sugerencia" ${ticket.asunto === 'sugerencia' ? 'selected' : ''}>💡 Sugerencia</option>
-                    <option value="felicitacion" ${ticket.asunto === 'felicitacion' ? 'selected' : ''}>🌟 Felicitación</option>
-                    <option value="pendiente_clasificar" ${ticket.asunto === 'pendiente_clasificar' ? 'selected' : ''}>⏳ Pendiente de clasificar</option>
+                    <option value="queja" ${ticket.asunto === 'queja' ? 'selected' : ''}>Queja</option>
+                    <option value="sugerencia" ${ticket.asunto === 'sugerencia' ? 'selected' : ''}>Sugerencia</option>
+                    <option value="felicitacion" ${ticket.asunto === 'felicitacion' ? 'selected' : ''}>Felicitación</option>
+                    <option value="pendiente_clasificar" ${ticket.asunto === 'pendiente_clasificar' ? 'selected' : ''}>Pendiente de clasificar</option>
                 </select>
-                <button onclick="asignarAsunto('${ticket.id}')" class="btn-success">Asignar</button>
+                <button onclick="asignarAsunto('${ticket.id}')" class="btn-success">Clasificar</button>
             </div>
             
-            <!-- CAMBIAR ESTADO (existente) -->
             <div class="form-group">
                 <label>Cambiar estado:</label>
                 <select id="cambiarEstado">
-                    <option value="pendiente" ${ticket.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                    <option value="en_revision" ${ticket.estado === 'en_revision' ? 'selected' : ''}>🔍 En revisión</option>
-                    <option value="resuelto" ${ticket.estado === 'resuelto' ? 'selected' : ''}>✅ Resuelto</option>
-                    <option value="cerrado" ${ticket.estado === 'cerrado' ? 'selected' : ''}>🔒 Cerrado</option>
+                    <option value="pendiente" ${ticket.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                    <option value="en_revision" ${ticket.estado === 'en_revision' ? 'selected' : ''}>En revisión</option>
+                    <option value="resuelto" ${ticket.estado === 'resuelto' ? 'selected' : ''}>Resuelto</option>
+                    <option value="cerrado" ${ticket.estado === 'cerrado' ? 'selected' : ''}>Cerrado</option>
                 </select>
                 <button onclick="actualizarEstado('${ticket.id}')" class="btn-success">Actualizar estado</button>
             </div>
@@ -241,6 +283,28 @@ async function verTicket(id) {
     `;
     
     modal.style.display = 'block';
+}
+
+// ============ ASIGNAR ASUNTO ============
+async function asignarAsunto(id) {
+    const nuevoAsunto = document.getElementById('asignarAsunto').value;
+    
+    if (!confirm(`¿Clasificar este asunto como "${nuevoAsunto}"?`)) return;
+    
+    try {
+        await db.collection('tickets').doc(id).update({
+            asunto: nuevoAsunto,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert('Asunto clasificado correctamente');
+        cerrarModal();
+        cargarTickets();
+        
+    } catch (error) {
+        console.error('Error al clasificar asunto:', error);
+        alert('Error al clasificar el asunto: ' + error.message);
+    }
 }
 
 // ============ ACTUALIZAR ESTADO ============
@@ -255,13 +319,13 @@ async function actualizarEstado(id) {
             fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        alert('✅ Estado actualizado correctamente');
+        alert('Estado actualizado correctamente');
         cerrarModal();
         cargarTickets();
         
     } catch (error) {
         console.error('Error al actualizar estado:', error);
-        alert('❌ Error al actualizar el estado: ' + error.message);
+        alert('Error al actualizar el estado: ' + error.message);
     }
 }
 
@@ -274,7 +338,7 @@ function responderTicket(id) {
     const detalle = document.getElementById('detalleTicket');
     
     detalle.innerHTML = `
-        <h2>✉️ Responder ticket ${ticket.folio}</h2>
+        <h2>Responder ticket ${ticket.folio}</h2>
         <p><strong>Para:</strong> ${ticket.nombre} (${ticket.contacto})</p>
         
         <div class="form-responder">
@@ -289,11 +353,13 @@ function responderTicket(id) {
                 <div id="listaArchivos" style="margin-top: 10px;"></div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="guardarRespuesta('${ticket.id}')" class="btn-success" style="flex: 1;">📤 Enviar respuesta</button>
-                <button onclick="verTicket('${ticket.id}')" style="flex: 0.5; background: #6c757d;">Cancelar</button>
+                <button onclick="guardarRespuesta('${ticket.id}')" class="btn-success" style="flex: 1;">Enviar respuesta</button>
+                <button onclick="cerrarModal()" style="flex: 0.5; background: #6c757d;">Cancelar</button>
             </div>
         </div>
     `;
+    
+    modal.style.display = 'block';
     
     // Mostrar archivos seleccionados
     document.getElementById('archivosRespuesta').addEventListener('change', function(e) {
@@ -301,7 +367,7 @@ function responderTicket(id) {
         lista.innerHTML = '';
         for (let file of this.files) {
             const div = document.createElement('div');
-            div.textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            div.textContent = `${file.name} (${(file.size/1024).toFixed(1)} KB)`;
             div.style.cssText = 'padding: 5px; background: #f1f1f1; margin: 3px 0; border-radius: 3px;';
             lista.appendChild(div);
         }
@@ -319,7 +385,7 @@ async function guardarRespuesta(id) {
     }
     
     const btn = document.querySelector('[onclick^="guardarRespuesta"]');
-    btn.textContent = '⏳ Enviando...';
+    btn.textContent = 'Enviando...';
     btn.disabled = true;
     
     try {
@@ -350,15 +416,15 @@ async function guardarRespuesta(id) {
             estado: 'en_revision'
         });
         
-        alert('✅ Respuesta guardada correctamente');
+        alert('Respuesta guardada correctamente');
         cerrarModal();
         cargarTickets();
         
     } catch (error) {
         console.error('Error al guardar respuesta:', error);
-        alert('❌ Error al guardar la respuesta: ' + error.message);
+        alert('Error al guardar la respuesta: ' + error.message);
     } finally {
-        btn.textContent = '📤 Enviar respuesta';
+        btn.textContent = 'Enviar respuesta';
         btn.disabled = false;
     }
 }
@@ -370,6 +436,8 @@ function cerrarModal() {
 
 // ============ APLICAR FILTROS ============
 document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
+    console.log('Aplicando filtros...');
+    
     const filtros = {
         asunto: document.getElementById('filtroAsunto').value,
         estado: document.getElementById('filtroEstado').value,
@@ -388,6 +456,7 @@ document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
         filtros.fechaFin = fin.toISOString().split('T')[0];
     }
     
+    console.log('Filtros aplicados:', filtros);
     cargarTickets(filtros);
 });
 
@@ -399,6 +468,7 @@ document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
     document.getElementById('filtroAsunto').value = '';
     document.getElementById('filtroEstado').value = '';
     document.getElementById('filtroDependencia').value = '';
+    
     cargarTickets();
 });
 
@@ -417,22 +487,4 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// ============ FUNCIÓN PARA ASIGNAR ASUNTO ============
-async function asignarAsunto(id, nuevoAsunto) {
-    if (!confirm(`¿Asignar el asunto como "${nuevoAsunto}"?`)) return;
-    
-    try {
-        await db.collection('tickets').doc(id).update({
-            asunto: nuevoAsunto,
-            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        alert('✅ Asunto asignado correctamente');
-        cerrarModal();
-        cargarTickets();
-        
-    } catch (error) {
-        console.error('Error al asignar asunto:', error);
-        alert('❌ Error al asignar el asunto: ' + error.message);
-    }
-}
+console.log('admin.js cargado completamente');

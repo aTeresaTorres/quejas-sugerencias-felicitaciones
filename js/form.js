@@ -13,27 +13,29 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
         return;
     }
     
-    // Validar que al menos un contacto esté presente
+    // ✅ Validar que al menos un contacto esté presente
     if (!email && !telefono) {
         alert('Debes proporcionar al menos un medio de contacto (correo o teléfono)');
         return;
     }
     
-    // ✅ VALIDACIÓN MEJORADA DE EMAIL
+    // ✅ Validar email si se proporcionó
+    let emailValido = false;
     if (email) {
-        const emailValido = await validarEmailReal(email);
+        emailValido = validarEmailFormato(email);
         if (!emailValido) {
-            alert('❌ El correo electrónico no parece ser válido o no existe. Por favor, verifica la dirección.');
+            alert('❌ El correo electrónico no tiene un formato válido. Ejemplo: usuario@dominio.com');
             return;
         }
     }
     
-    // ✅ VALIDACIÓN MEJORADA DE TELÉFONO
+    // ✅ Validar teléfono si se proporcionó
+    let telefonoValido = false;
     if (telefono) {
         const telefonoLimpio = telefono.replace(/\s/g, '');
-        const telefonoValido = await validarTelefonoReal(telefonoLimpio);
+        telefonoValido = validarTelefonoFormato(telefonoLimpio);
         if (!telefonoValido) {
-            alert('❌ El número de teléfono no parece ser válido. Por favor, verifica el número (10 dígitos).');
+            alert('❌ El número de teléfono debe ser válido y tener 10 dígitos. Ejemplo: 5512345678');
             return;
         }
     }
@@ -46,16 +48,20 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
     const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
     const folio = `BQ-${year}${month}${day}-${random}`;
     
-    // PREPARAR DATOS (SIN asunto, lo asignará el admin)
+    // ✅ PREPARAR DATOS - Guardar AMBOS contactos si existen
     const ticketData = {
         folio: folio,
         nombre: nombre,
+        // ✅ Contacto principal (el que se usará para mostrar)
         contacto: email || telefono,
+        // ✅ Tipo de contacto principal
         tipoContacto: email ? 'email' : 'telefono',
+        // ✅ Guardar AMBOS contactos
         email: email || null,
         telefono: telefono || null,
-        // ❌ ELIMINADO: asunto (ya no lo selecciona el usuario)
-        asunto: 'pendiente_clasificar', // Valor por defecto
+        // ✅ Indicar si tiene ambos
+        tieneAmbos: !!(email && telefono),
+        asunto: 'pendiente_clasificar',
         mensaje: mensaje,
         estado: 'pendiente',
         dependencia: 'sin_asignar',
@@ -68,6 +74,9 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
         // GUARDAR EN FIRESTORE
         const docRef = await db.collection('tickets').add(ticketData);
         console.log('Ticket guardado con ID:', docRef.id);
+        console.log('📧 Email:', email || 'No proporcionado');
+        console.log('📞 Teléfono:', telefono || 'No proporcionado');
+        console.log('📌 Ambos contactos:', ticketData.tieneAmbos ? 'Sí' : 'No');
         
         // MOSTRAR CONFIRMACIÓN
         mostrarConfirmacion(ticketData);
@@ -75,85 +84,19 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
         // LIMPIAR FORMULARIO
         this.reset();
         
+        // Resetear estilos de validación
+        document.getElementById('email').style.borderColor = '#e1e5eb';
+        document.getElementById('email').style.backgroundColor = 'white';
+        document.getElementById('telefono').style.borderColor = '#e1e5eb';
+        document.getElementById('telefono').style.backgroundColor = 'white';
+        
     } catch (error) {
         console.error('Error al guardar:', error);
         alert('❌ Hubo un error al enviar tu asunto. Por favor, intenta de nuevo.\n\n' + error.message);
     }
 });
 
-// ============ VALIDACIÓN DE EMAIL REAL ============
-async function validarEmailReal(email) {
-    // 1. Validar formato básico
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!re.test(email)) {
-        console.log('❌ Formato de email inválido');
-        return false;
-    }
-    
-    // 2. Verificar que el dominio tenga registros MX (exista)
-    try {
-        const dominio = email.split('@')[1];
-        const respuesta = await fetch(`https://api.mailcheck.ai/domain/${dominio}`);
-        const data = await respuesta.json();
-        
-        // Si el dominio tiene registros MX, es válido
-        if (data.mx) {
-            console.log('✅ Dominio válido con MX records');
-            return true;
-        } else {
-            console.log('❌ Dominio sin MX records');
-            return false;
-        }
-    } catch (error) {
-        console.warn('⚠️ No se pudo verificar el dominio, pero el formato es válido');
-        // Si falla la verificación, al menos validamos el formato
-        return true;
-    }
-}
-
-// ============ VALIDACIÓN DE TELÉFONO REAL ============
-async function validarTelefonoReal(telefono) {
-    // 1. Validar formato (10 dígitos para México)
-    const re = /^\d{10}$/;
-    if (!re.test(telefono)) {
-        console.log('❌ Formato de teléfono inválido (deben ser 10 dígitos)');
-        return false;
-    }
-    
-    // 2. Verificar que el número exista usando una API gratuita
-    try {
-        // Usamos una API gratuita para verificar números (limitada)
-        const respuesta = await fetch(`https://api.veriphone.io/v2/verify?phone=%2B52${telefono}&key=5B923F14B26444A89EC40AA5D437E3A3`);
-        const data = await respuesta.json();
-        
-        if (data && data.phone_valid) {
-            console.log('✅ Teléfono válido:', data.country);
-            return true;
-        } else {
-            console.log('❌ Teléfono inválido');
-            return false;
-        }
-    } catch (error) {
-        console.warn('⚠️ No se pudo verificar el teléfono, pero el formato es válido');
-        // Si falla la API, al menos validamos el formato
-        return true;
-    }
-}
-
-// ============ VALIDACIÓN ALTERNATIVA (SIN API) ============
-// Esta versión solo valida formato pero es más confiable (no depende de APIs externas)
-
-function validarEmailFormato(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-}
-
-function validarTelefonoFormato(telefono) {
-    const re = /^\d{10}$/;
-    return re.test(telefono.replace(/\s/g, ''));
-}
-
-// ============ MOSTRAR CONFIRMACIÓN ============
+// ============ MOSTRAR CONFIRMACIÓN (ACTUALIZADA) ============
 function mostrarConfirmacion(data) {
     document.getElementById('quejaForm').style.display = 'none';
     document.getElementById('confirmacion').style.display = 'block';
@@ -168,14 +111,35 @@ function mostrarConfirmacion(data) {
         hour12: true
     });
     
+    // ✅ Mostrar los contactos correctamente
+    let contactosHTML = '';
+    if (data.email && data.telefono) {
+        contactosHTML = `
+            <p><strong>Correo electrónico:</strong> ${data.email}</p>
+            <p><strong>Teléfono:</strong> ${data.telefono}</p>
+        `;
+    } else if (data.email) {
+        contactosHTML = `
+            <p><strong>Correo electrónico:</strong> ${data.email}</p>
+            <p style="color: #666;"><em>Teléfono no proporcionado</em></p>
+        `;
+    } else if (data.telefono) {
+        contactosHTML = `
+            <p><strong>Teléfono:</strong> ${data.telefono}</p>
+            <p style="color: #666;"><em>Correo no proporcionado</em></p>
+        `;
+    }
+    
     const recibo = document.getElementById('recibo');
     recibo.innerHTML = `
         <div class="recibo-card" id="reciboContent">
             <h3>📋 RECIBO DE REGISTRO</h3>
             <p><strong>Folio:</strong> <span style="color: #007bff; font-size: 1.2em;">${data.folio}</span></p>
             <p><strong>Nombre:</strong> ${data.nombre}</p>
-            <p><strong>Contacto:</strong> ${data.contacto}</p>
-            <p><strong>Tipo de contacto:</strong> ${data.tipoContacto === 'email' ? 'Correo electrónico' : 'Teléfono'}</p>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>Información de contacto:</strong>
+                ${contactosHTML}
+            </div>
             <p><strong>Mensaje:</strong></p>
             <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin: 10px 0;">
                 ${data.mensaje}
@@ -187,11 +151,60 @@ function mostrarConfirmacion(data) {
     `;
 }
 
+// ============ VALIDACIÓN DE EMAIL ============
+function validarEmailFormato(email) {
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!re.test(email)) return false;
+    
+    const partes = email.split('@');
+    if (partes.length !== 2) return false;
+    
+    const [usuario, dominio] = partes;
+    if (usuario.length < 2) return false;
+    
+    const partesDominio = dominio.split('.');
+    if (partesDominio.length < 2) return false;
+    if (partesDominio[partesDominio.length - 1].length < 2) return false;
+    
+    return true;
+}
+
+// ============ VALIDACIÓN DE TELÉFONO (SIN API) ============
+function validarTelefonoFormato(telefono) {
+    const limpio = telefono.replace(/\s/g, '').replace(/-/g, '');
+    
+    // Debe ser exactamente 10 dígitos
+    if (!/^\d{10}$/.test(limpio)) return false;
+    
+    // No puede ser un número repetido
+    if (/^(\d)\1{9}$/.test(limpio)) return false;
+    
+    // No puede ser secuencial simple
+    if (/^0123456789$/.test(limpio) || /^9876543210$/.test(limpio)) return false;
+    
+    // Validar LADA (código de área) - México
+    const lada = parseInt(limpio.substring(0, 2));
+    if (lada < 20) return false;
+    
+    // No puede ser números de emergencia
+    const numerosInvalidos = ['911', '066', '089', '065'];
+    if (numerosInvalidos.includes(limpio.substring(0, 3))) return false;
+    
+    return true;
+}
+
 // ============ VOLVER AL FORMULARIO ============
 function volverAlFormulario() {
     document.getElementById('quejaForm').style.display = 'block';
     document.getElementById('quejaForm').reset();
     document.getElementById('confirmacion').style.display = 'none';
+    
+    // Resetear estilos de validación
+    document.getElementById('email').style.borderColor = '#e1e5eb';
+    document.getElementById('email').style.backgroundColor = 'white';
+    document.getElementById('telefono').style.borderColor = '#e1e5eb';
+    document.getElementById('telefono').style.backgroundColor = 'white';
+    
     document.querySelector('.container').scrollIntoView({ 
         behavior: 'smooth',
         block: 'start'
@@ -227,47 +240,11 @@ function generarPDF() {
 }
 
 // ============ VALIDACIÓN EN TIEMPO REAL ============
-// Teléfono: solo números
+
+// Teléfono: solo números y limitar a 10 dígitos
 document.getElementById('telefono').addEventListener('input', function(e) {
     this.value = this.value.replace(/\D/g, '');
     if (this.value.length > 10) {
         this.value = this.value.slice(0, 10);
-    }
-});
-
-// Formatear teléfono al perder el foco
-document.getElementById('telefono').addEventListener('blur', function() {
-    if (this.value.length === 10) {
-        this.value = this.value.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
-    }
-});
-
-// Validación visual de email en tiempo real
-document.getElementById('email').addEventListener('blur', function() {
-    const email = this.value.trim();
-    if (email && !validarEmailFormato(email)) {
-        this.style.borderColor = '#dc3545';
-        this.style.backgroundColor = '#fff0f0';
-    } else if (email) {
-        this.style.borderColor = '#28a745';
-        this.style.backgroundColor = '#f0fff0';
-    } else {
-        this.style.borderColor = '#e1e5eb';
-        this.style.backgroundColor = 'white';
-    }
-});
-
-// Validación visual de teléfono en tiempo real
-document.getElementById('telefono').addEventListener('blur', function() {
-    const telefono = this.value.replace(/\s/g, '');
-    if (telefono && !validarTelefonoFormato(telefono)) {
-        this.style.borderColor = '#dc3545';
-        this.style.backgroundColor = '#fff0f0';
-    } else if (telefono) {
-        this.style.borderColor = '#28a745';
-        this.style.backgroundColor = '#f0fff0';
-    } else {
-        this.style.borderColor = '#e1e5eb';
-        this.style.backgroundColor = 'white';
     }
 });
