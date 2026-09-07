@@ -3,11 +3,12 @@ let tickets = [];
 let ticketActual = null;
 let filtrosActuales = {};
 let ticketsNuevos = new Set();
+let totalTicketsGeneral = 0;
 
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {
-        document.getElementById('userEmail').textContent = `👤 ${user.email}`;
+        document.getElementById('userEmailText').textContent = user.email;
         cargarTickets();
     } else {
         window.location.href = 'login.html';
@@ -23,7 +24,6 @@ document.getElementById('btnLogout').addEventListener('click', () => {
 
 // ============ RECARGAR CON FILTROS ACTUALES ============
 document.getElementById('btnRecargar').addEventListener('click', () => {
-    console.log('🔄 Recargando con filtros actuales:', filtrosActuales);
     cargarTickets(filtrosActuales);
 });
 
@@ -57,17 +57,15 @@ document.getElementById('tipoFiltroFecha').addEventListener('change', function()
     switch(tipo) {
         case 'anio':
             html = `
-                <div class="form-group">
+                <div class="filtro-grupo">
                     <label>Año</label>
-                    <select id="filtroAnio">
-                        ${generarOpcionesAnios()}
-                    </select>
+                    <select id="filtroAnio">${generarOpcionesAnios()}</select>
                 </div>
             `;
             break;
         case 'mes':
             html = `
-                <div class="form-group">
+                <div class="filtro-grupo">
                     <label>Mes</label>
                     <input type="month" id="filtroMes">
                 </div>
@@ -75,11 +73,11 @@ document.getElementById('tipoFiltroFecha').addEventListener('change', function()
             break;
         case 'periodo':
             html = `
-                <div class="form-group">
+                <div class="filtro-grupo">
                     <label>Desde</label>
                     <input type="date" id="filtroDesde">
                 </div>
-                <div class="form-group">
+                <div class="filtro-grupo">
                     <label>Hasta</label>
                     <input type="date" id="filtroHasta">
                 </div>
@@ -87,14 +85,14 @@ document.getElementById('tipoFiltroFecha').addEventListener('change', function()
             break;
         case 'dia':
             html = `
-                <div class="form-group">
+                <div class="filtro-grupo">
                     <label>Día específico</label>
                     <input type="date" id="filtroDia">
                 </div>
             `;
             break;
         default:
-            html = `<p style="color: #999; font-size: 0.9em;">Selecciona un tipo de filtro de fecha</p>`;
+            html = `<p style="color: #999; font-size: 0.85em; padding: 5px 0;">Selecciona un tipo de filtro de fecha</p>`;
     }
     
     container.innerHTML = html;
@@ -109,18 +107,12 @@ function generarOpcionesAnios() {
     return options;
 }
 
-// ============ FUNCIÓN PARA OBTENER FECHA CORRECTA ============
+// ============ FUNCIONES DE FECHA ============
 function obtenerFechaCorrecta(fecha) {
     if (!fecha) return null;
-    if (fecha.toDate) {
-        return fecha.toDate();
-    }
-    if (typeof fecha === 'string') {
-        return new Date(fecha);
-    }
-    if (fecha instanceof Date) {
-        return fecha;
-    }
+    if (fecha.toDate) return fecha.toDate();
+    if (typeof fecha === 'string') return new Date(fecha);
+    if (fecha instanceof Date) return fecha;
     return null;
 }
 
@@ -130,22 +122,33 @@ function normalizarFecha(fecha) {
     return d;
 }
 
-// ============ CARGAR TICKETS CON FILTROS ============
+function formatearFecha(fecha) {
+    if (!fecha) return 'N/A';
+    const d = new Date(fecha);
+    return d.toLocaleDateString('es-MX');
+}
+
+function formatearFechaHora(fecha) {
+    if (!fecha) return 'N/A';
+    const d = new Date(fecha);
+    return d.toLocaleString('es-MX');
+}
+
+// ============ CARGAR TICKETS ============
 async function cargarTickets(filtros = {}) {
     filtrosActuales = { ...filtros };
     
     const container = document.getElementById('ticketsContainer');
-    container.innerHTML = '<p style="text-align: center;">⏳ Cargando tickets...</p>';
+    container.innerHTML = '<p style="text-align: center; color: #999;">Cargando tickets...</p>';
     
     try {
         if (typeof db === 'undefined') {
-            container.innerHTML = '<p style="color: red;">❌ Error: Firebase no está inicializado</p>';
+            container.innerHTML = '<p style="color: red;">Error: Firebase no está inicializado</p>';
             return;
         }
         
         let query = db.collection('tickets').orderBy('fechaCreacion', 'desc');
         
-        // Aplicar filtros básicos
         if (filtros.asunto && filtros.asunto !== '') {
             query = query.where('asunto', '==', filtros.asunto);
         }
@@ -159,20 +162,23 @@ async function cargarTickets(filtros = {}) {
         const snapshot = await query.get();
         let ticketsTemp = [];
         const idsActuales = new Set();
+        let totalGeneral = 0;
         
         snapshot.forEach(doc => {
             const data = doc.data();
             idsActuales.add(doc.id);
+            totalGeneral++;
             
             let incluir = true;
-            
-            // Filtros de fecha (en cliente)
             incluir = aplicarFiltrosFecha(data, filtros);
             
             if (incluir) {
                 ticketsTemp.push({ id: doc.id, ...data });
             }
         });
+        
+        // Guardar total general para estadísticas
+        totalTicketsGeneral = totalGeneral;
         
         // BÚSQUEDA GLOBAL
         if (filtros.terminoBusqueda) {
@@ -185,22 +191,17 @@ async function cargarTickets(filtros = {}) {
                 const telefono = (t.telefono || '').toLowerCase();
                 const mensaje = (t.mensaje || '').toLowerCase();
                 
-                return folio.includes(termino) || 
-                       nombre.includes(termino) || 
-                       contacto.includes(termino) ||
-                       email.includes(termino) ||
-                       telefono.includes(termino) ||
-                       mensaje.includes(termino);
+                return folio.includes(termino) || nombre.includes(termino) || 
+                       contacto.includes(termino) || email.includes(termino) ||
+                       telefono.includes(termino) || mensaje.includes(termino);
             });
         }
         
-        // Detectar tickets NUEVOS (solo si estado es pendiente y no tiene historial)
+        // Detectar tickets NUEVOS (pendientes sin historial)
         const idsNuevos = new Set();
         ticketsTemp.forEach(t => {
-            // ✅ SOLO si estado es pendiente y no tiene historial
-            const tieneHistorial = t.historialSeguimiento && t.historialSeguimiento.length > 0;
             const esPendiente = t.estado === 'pendiente';
-            
+            const tieneHistorial = t.historialSeguimiento && t.historialSeguimiento.length > 0;
             if (esPendiente && !tieneHistorial && !ticketsNuevos.has(t.id)) {
                 idsNuevos.add(t.id);
             }
@@ -209,14 +210,14 @@ async function cargarTickets(filtros = {}) {
         
         tickets = ticketsTemp;
         renderTickets(tickets, idsNuevos);
-        actualizarEstadisticas(tickets);
+        actualizarEstadisticas(tickets, totalGeneral);
         
         document.getElementById('contadorTickets').textContent = `(${tickets.length} tickets)`;
         
     } catch (error) {
         console.error('Error al cargar tickets:', error);
         container.innerHTML = `
-            <p style="color: red;">❌ Error al cargar los tickets</p>
+            <p style="color: red;">Error al cargar los tickets</p>
             <p style="color: #666; font-size: 0.9em;">${error.message}</p>
         `;
     }
@@ -239,17 +240,30 @@ function aplicarFiltrosFecha(data, filtros) {
         case 'actualizacion':
             fechaObj = data.fechaActualizacion;
             break;
-        case 'envio_dependencia':
-            fechaObj = data.fechaEnvioDependencia;
+        case 'envio_dependencia': {
+            // Tomar la fecha de recibido del último envío
+            const envios = data.enviosDependencia || [];
+            if (envios.length > 0) {
+                const ultimo = envios[envios.length - 1];
+                fechaObj = ultimo.fechaRecibido;
+            }
             break;
-        case 'respuesta_dependencia':
-            fechaObj = data.fechaRespuestaDependencia;
+        }
+        case 'respuesta_dependencia': {
+            // Tomar la fecha de respuesta de la última respuesta
+            const respuestas = data.respuestasDependencia || [];
+            if (respuestas.length > 0) {
+                const ultima = respuestas[respuestas.length - 1];
+                fechaObj = ultima.fechaRespuesta;
+            }
             break;
+        }
         case 'respuesta_ciudadano': {
-            const respuestasCiudadano = data.respuestasCiudadano || [];
-            if (respuestasCiudadano.length > 0) {
-                const ultima = respuestasCiudadano[respuestasCiudadano.length - 1];
-                fechaObj = ultima.fecha;
+            // Tomar la fecha de respuesta de la última respuesta al ciudadano
+            const respuestas = data.respuestasCiudadano || [];
+            if (respuestas.length > 0) {
+                const ultima = respuestas[respuestas.length - 1];
+                fechaObj = ultima.fechaRespuesta;
             }
             break;
         }
@@ -305,7 +319,7 @@ function renderTickets(tickets, idsNuevos = new Set()) {
     const container = document.getElementById('ticketsContainer');
     
     if (tickets.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #999;">📭 No hay tickets registrados con estos filtros</p>';
+        container.innerHTML = '<p style="text-align: center; color: #999;">No hay tickets registrados con estos filtros</p>';
         return;
     }
     
@@ -330,26 +344,26 @@ function renderTickets(tickets, idsNuevos = new Set()) {
         const fecha = obtenerFechaCorrecta(ticket.fechaCreacion) || new Date();
         const estadoClass = ticket.estado || 'pendiente';
         const estadoLabel = {
-            'pendiente': '⏳ Pendiente',
-            'en_revision': '🔍 En revisión',
-            'en_proceso': '⚙️ En proceso',
-            'vencido': '⏰ Vencido',
-            'resuelto': '✅ Resuelto',
-            'cerrado': '🔒 Cerrado'
+            'pendiente': 'Pendiente',
+            'en_revision': 'En revisión',
+            'en_proceso': 'En proceso',
+            'vencido': 'Vencido',
+            'resuelto': 'Resuelto',
+            'cerrado': 'Cerrado'
         }[estadoClass] || estadoClass;
         
         const asuntoLabel = {
-            'queja': '⚠️ Queja',
-            'sugerencia': '💡 Sugerencia',
-            'felicitacion': '🌟 Felicitación',
-            'pendiente_clasificar': '⏳ Por clasificar',
-            'no_procede': '🚫 No procede',
-            'otros': '📌 Otros'
+            'queja': 'Queja',
+            'sugerencia': 'Sugerencia',
+            'felicitacion': 'Felicitación',
+            'pendiente_clasificar': 'Por clasificar',
+            'no_procede': 'No procede',
+            'otros': 'Otros'
         }[ticket.asunto] || ticket.asunto;
         
         let contactoMostrar = ticket.contacto;
         if (ticket.email && ticket.telefono) {
-            contactoMostrar = `${ticket.email} / ${ticket.telefono}`;
+            contactoMostrar = ticket.email + ' / ' + ticket.telefono;
         } else if (ticket.email) {
             contactoMostrar = ticket.email;
         } else if (ticket.telefono) {
@@ -357,26 +371,25 @@ function renderTickets(tickets, idsNuevos = new Set()) {
         }
         
         const dias = Math.floor((new Date() - fecha) / (1000 * 60 * 60 * 24));
-        const diasLabel = dias === 0 ? 'Hoy' : `${dias}d`;
+        const diasLabel = dias === 0 ? '0d' : dias + 'd';
         
-        // ✅ SOLO resaltar si es nuevo (pendiente y sin historial)
-        const esNuevo = idsNuevos.has(ticket.id);
+        // Resaltar si es NUEVO (pendiente sin historial)
         const esPendiente = ticket.estado === 'pendiente';
         const tieneHistorial = ticket.historialSeguimiento && ticket.historialSeguimiento.length > 0;
-        const debeResaltar = esNuevo && esPendiente && !tieneHistorial;
+        const debeResaltar = esPendiente && !tieneHistorial;
         
         html += `
-            <tr class="${debeResaltar ? 'nuevo-ticket' : ''}" style="${debeResaltar ? 'background: #fff3cd; animation: highlightNew 3s ease;' : ''}">
-                <td><strong>${debeResaltar ? '🆕 ' : ''}${ticket.folio}</strong></td>
+            <tr class="${debeResaltar ? 'nuevo-ticket' : ''}">
+                <td><strong>${ticket.folio}</strong></td>
                 <td>${ticket.nombre}</td>
                 <td>${contactoMostrar}</td>
                 <td>${asuntoLabel}</td>
                 <td>${ticket.dependencia || 'Sin asignar'}</td>
                 <td><span class="estado ${estadoClass}">${estadoLabel}</span></td>
-                <td>${fecha.toLocaleDateString('es-MX')}<br><small>${diasLabel}</small></td>
+                <td>${formatearFecha(fecha)}</td>
                 <td>
-                    <button onclick="verTicket('${ticket.id}')" class="btn-small">👁️ Ver</button>
-                    <button onclick="irSeguimiento('${ticket.id}')" class="btn-small btn-success">📋 Seguimiento</button>
+                    <button onclick="verTicket('${ticket.id}')" class="btn-small"><i class="fas fa-eye"></i> Ver</button>
+                    <button onclick="irSeguimiento('${ticket.id}')" class="btn-small btn-success"><i class="fas fa-arrow-right"></i> Seguimiento</button>
                 </td>
             </tr>
         `;
@@ -384,15 +397,6 @@ function renderTickets(tickets, idsNuevos = new Set()) {
     
     html += '</tbody></table></div>';
     container.innerHTML = html;
-    
-    if (idsNuevos.size > 0) {
-        setTimeout(() => {
-            document.querySelectorAll('.nuevo-ticket').forEach(el => {
-                el.style.background = '';
-                el.style.animation = '';
-            });
-        }, 4000);
-    }
 }
 
 // ============ VER TICKET ============
@@ -408,45 +412,57 @@ async function verTicket(id) {
     
     const fecha = obtenerFechaCorrecta(ticket.fechaCreacion) || new Date();
     const estadoLabel = {
-        'pendiente': '⏳ Pendiente',
-        'en_revision': '🔍 En revisión',
-        'en_proceso': '⚙️ En proceso',
-        'vencido': '⏰ Vencido',
-        'resuelto': '✅ Resuelto',
-        'cerrado': '🔒 Cerrado'
+        'pendiente': 'Pendiente',
+        'en_revision': 'En revisión',
+        'en_proceso': 'En proceso',
+        'vencido': 'Vencido',
+        'resuelto': 'Resuelto',
+        'cerrado': 'Cerrado'
     }[ticket.estado] || ticket.estado;
     
     const asuntoLabel = {
-        'queja': '⚠️ Queja',
-        'sugerencia': '💡 Sugerencia',
-        'felicitacion': '🌟 Felicitación',
-        'pendiente_clasificar': '⏳ Por clasificar',
-        'no_procede': '🚫 No procede',
-        'otros': '📌 Otros'
+        'queja': 'Queja',
+        'sugerencia': 'Sugerencia',
+        'felicitacion': 'Felicitación',
+        'pendiente_clasificar': 'Por clasificar',
+        'no_procede': 'No procede',
+        'otros': 'Otros'
     }[ticket.asunto] || ticket.asunto;
     
     let contactosHTML = '';
     if (ticket.email && ticket.telefono) {
         contactosHTML = `
-            <div><strong>📧 Correo:</strong> ${ticket.email}</div>
-            <div><strong>📞 Teléfono:</strong> ${ticket.telefono}</div>
+            <div><i class="fas fa-envelope"></i> <strong>Correo:</strong> ${ticket.email}</div>
+            <div><i class="fas fa-phone"></i> <strong>Teléfono:</strong> ${ticket.telefono}</div>
         `;
     } else if (ticket.email) {
-        contactosHTML = `<div><strong>📧 Correo:</strong> ${ticket.email}</div>`;
+        contactosHTML = `<div><i class="fas fa-envelope"></i> <strong>Correo:</strong> ${ticket.email}</div>`;
     } else if (ticket.telefono) {
-        contactosHTML = `<div><strong>📞 Teléfono:</strong> ${ticket.telefono}</div>`;
+        contactosHTML = `<div><i class="fas fa-phone"></i> <strong>Teléfono:</strong> ${ticket.telefono}</div>`;
     }
     
+    // Historial de seguimiento
     let historialHTML = '';
     if (ticket.historialSeguimiento && ticket.historialSeguimiento.length > 0) {
         historialHTML = ticket.historialSeguimiento.map(h => {
             const fechaH = new Date(h.fecha);
+            // Marcar si falta fecha de recibido en envío a dependencia
+            let warningClass = '';
+            if (h.accion === 'Envío a dependencia' || h.accion === 'Envío adicional a dependencia') {
+                // Verificar si este envío tiene fecha de recibido
+                const envios = ticket.enviosDependencia || [];
+                const envioRelacionado = envios.find(e => e.oficio === h.oficio || e.descripcion === h.descripcion);
+                if (envioRelacionado && !envioRelacionado.fechaRecibido) {
+                    warningClass = 'warning';
+                }
+            }
             return `
-                <div class="historial-item">
+                <div class="historial-item ${warningClass}">
                     <p><strong>${h.accion}</strong> - ${fechaH.toLocaleString('es-MX')}</p>
-                    ${h.descripcion ? `<p>${h.descripcion}</p>` : ''}
-                    ${h.oficio ? `<p><strong>Oficio:</strong> ${h.oficio}</p>` : ''}
-                    ${h.usuario ? `<p><small>Por: ${h.usuario}</small></p>` : ''}
+                    ${h.descripcion ? '<p>' + h.descripcion + '</p>' : ''}
+                    ${h.oficio ? '<p><strong>Oficio:</strong> ' + h.oficio + '</p>' : ''}
+                    ${h.usuario ? '<p><small>Por: ' + h.usuario + '</small></p>' : ''}
+                    ${warningClass ? '<p style="color: #dc2626; font-weight: bold;"><i class="fas fa-exclamation-triangle"></i> Falta fecha de recibido</p>' : ''}
                 </div>
             `;
         }).join('');
@@ -463,7 +479,7 @@ async function verTicket(id) {
                     <p><strong>${r.usuario}</strong> - ${fechaR.toLocaleString('es-MX')}</p>
                     <p>${r.descripcion}</p>
                     ${r.archivos && r.archivos.length > 0 ? 
-                        r.archivos.map(url => `<a href="${url}" target="_blank" class="file-link">📎 Ver archivo</a>`).join(' ') : 
+                        r.archivos.map(url => '<a href="' + url + '" target="_blank" class="file-link"><i class="fas fa-paperclip"></i> Ver archivo</a>').join(' ') : 
                         ''}
                 </div>
             `;
@@ -473,38 +489,38 @@ async function verTicket(id) {
     }
     
     detalle.innerHTML = `
-        <h2>📋 Ticket ${ticket.folio}</h2>
+        <h2><i class="fas fa-ticket-alt"></i> Ticket ${ticket.folio}</h2>
         
         <div class="ticket-info">
             <div class="info-grid">
-                <div><strong>👤 Nombre:</strong> ${ticket.nombre}</div>
+                <div><i class="fas fa-user"></i> <strong>Nombre:</strong> ${ticket.nombre}</div>
                 ${contactosHTML}
-                <div><strong>📌 Asunto:</strong> <span style="font-weight: bold;">${asuntoLabel}</span></div>
-                <div><strong>🏢 Dependencia:</strong> ${ticket.dependencia || 'Sin asignar'}</div>
-                <div><strong>📊 Estado:</strong> <span class="estado ${ticket.estado}">${estadoLabel}</span></div>
-                <div><strong>📅 Fecha creación:</strong> ${fecha.toLocaleString('es-MX')}</div>
-                <div><strong>⏱️ Días transcurridos:</strong> ${Math.floor((new Date() - fecha) / (1000 * 60 * 60 * 24))} días</div>
+                <div><i class="fas fa-tag"></i> <strong>Asunto:</strong> <span style="font-weight: bold;">${asuntoLabel}</span></div>
+                <div><i class="fas fa-building"></i> <strong>Dependencia:</strong> ${ticket.dependencia || 'Sin asignar'}</div>
+                <div><i class="fas fa-circle"></i> <strong>Estado:</strong> <span class="estado ${ticket.estado}">${estadoLabel}</span></div>
+                <div><i class="fas fa-calendar"></i> <strong>Fecha creación:</strong> ${formatearFechaHora(fecha)}</div>
+                <div><i class="fas fa-clock"></i> <strong>Días transcurridos:</strong> ${Math.floor((new Date() - fecha) / (1000 * 60 * 60 * 24))} días</div>
             </div>
             
             <div class="mensaje-box">
-                <strong>📝 Mensaje:</strong>
+                <strong><i class="fas fa-comment"></i> Mensaje:</strong>
                 <p>${ticket.mensaje}</p>
             </div>
         </div>
         
         <div class="historial">
-            <h3>📜 Historial de seguimiento</h3>
+            <h3><i class="fas fa-history"></i> Historial de seguimiento</h3>
             ${historialHTML}
         </div>
         
         <div class="respuestas">
-            <h3>💬 Respuestas al usuario</h3>
+            <h3><i class="fas fa-reply"></i> Respuestas al usuario</h3>
             ${respuestasHTML}
         </div>
         
         <div style="margin-top: 20px; text-align: center;">
-            <button onclick="cerrarModalVer()" style="background: #6c757d;">Cerrar</button>
-            <button onclick="cerrarModalVer(); irSeguimiento('${ticket.id}')" class="btn-success">📋 Ir a seguimiento</button>
+            <button onclick="cerrarModalVer()" class="btn-secondary"><i class="fas fa-times"></i> Cerrar</button>
+            <button onclick="cerrarModalVer(); irSeguimiento('${ticket.id}')" class="btn-success"><i class="fas fa-arrow-right"></i> Ir a seguimiento</button>
         </div>
     `;
     
@@ -517,22 +533,24 @@ function cerrarModalVer() {
 
 // ============ IR A SEGUIMIENTO ============
 function irSeguimiento(id) {
-    window.location.href = `seguimiento.html?id=${id}`;
+    window.location.href = 'seguimiento.html?id=' + id;
 }
 
 // ============ ACTUALIZAR ESTADÍSTICAS ============
-function actualizarEstadisticas(tickets) {
-    const total = tickets.length;
-    const pendientes = tickets.filter(t => t.estado === 'pendiente' || t.estado === 'en_revision').length;
-    const enProceso = tickets.filter(t => t.estado === 'en_proceso').length;
-    const vencidos = tickets.filter(t => t.estado === 'vencido').length;
-    const resueltos = tickets.filter(t => t.estado === 'resuelto' || t.estado === 'cerrado').length;
+function actualizarEstadisticas(ticketsFiltrados, totalGeneral) {
+    const totalMostrados = ticketsFiltrados.length;
+    const pendientes = ticketsFiltrados.filter(t => t.estado === 'pendiente').length;
+    const enRevision = ticketsFiltrados.filter(t => t.estado === 'en_revision').length;
+    const enProceso = ticketsFiltrados.filter(t => t.estado === 'en_proceso').length;
+    const vencidos = ticketsFiltrados.filter(t => t.estado === 'vencido').length;
+    const resueltos = ticketsFiltrados.filter(t => t.estado === 'resuelto' || t.estado === 'cerrado').length;
     
-    document.getElementById('totalTickets').textContent = total;
+    document.getElementById('totalTickets').textContent = totalMostrados + '/' + totalGeneral;
     document.getElementById('pendientes').textContent = pendientes;
-    document.getElementById('enRevision').textContent = enProceso;
-    document.getElementById('resueltos').textContent = resueltos;
+    document.getElementById('enRevision').textContent = enRevision;
+    document.getElementById('enProceso').textContent = enProceso;
     document.getElementById('vencidos').textContent = vencidos;
+    document.getElementById('resueltos').textContent = resueltos;
 }
 
 // ============ APLICAR FILTROS ============
@@ -584,7 +602,7 @@ document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
     document.getElementById('filtroEstado').value = '';
     document.getElementById('filtroDependencia').value = '';
     document.getElementById('busquedaGlobal').value = '';
-    document.getElementById('filtroFechaContainer').innerHTML = '<p style="color: #999; font-size: 0.9em;">Selecciona un tipo de filtro de fecha</p>';
+    document.getElementById('filtroFechaContainer').innerHTML = '<p style="color: #999; font-size: 0.85em; padding: 5px 0;">Selecciona un tipo de filtro de fecha</p>';
     
     filtrosActuales = {};
     cargarTickets();
@@ -604,4 +622,4 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-console.log('✅ admin.js cargado correctamente');
+console.log('admin.js cargado correctamente');

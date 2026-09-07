@@ -35,7 +35,19 @@ function formatearFechaHora(fecha) {
     return d.toLocaleString('es-MX');
 }
 
-// ============ MOSTRAR LOADING EN BOTON ============
+function obtenerFecha(fechaInput) {
+    if (!fechaInput) return null;
+    return new Date(fechaInput + 'T00:00:00');
+}
+
+function compararFechas(fecha1, fecha2) {
+    if (!fecha1 || !fecha2) return true;
+    const d1 = new Date(fecha1 + 'T00:00:00');
+    const d2 = new Date(fecha2 + 'T00:00:00');
+    return d1 <= d2;
+}
+
+// ============ MOSTRAR LOADING ============
 function mostrarLoading(btn) {
     const textoOriginal = btn.textContent;
     btn.textContent = 'Procesando...';
@@ -85,13 +97,13 @@ function puedeAvanzar(pasoRequerido) {
             break;
         case 6:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
-                alert('Primero debes registrar el envio a dependencia (Paso 5)');
+                alert('Primero debes registrar el envío a dependencia (Paso 5)');
                 return false;
             }
             break;
         case 7:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
-                alert('Primero debes registrar el envio a dependencia (Paso 5)');
+                alert('Primero debes registrar el envío a dependencia (Paso 5)');
                 return false;
             }
             const ultimoEnvio = ticketData.enviosDependencia[ticketData.enviosDependencia.length - 1];
@@ -126,10 +138,11 @@ function mostrarTicket() {
     document.getElementById('emailTicket').textContent = t.email || 'No proporcionado';
     document.getElementById('telefonoTicket').textContent = t.telefono || 'No proporcionado';
     document.getElementById('fechaCreacionTicket').textContent = formatearFechaHora(t.fechaCreacion);
+    document.getElementById('mensajeUsuario').textContent = t.mensaje || 'Sin mensaje';
     
     const estadoLabel = {
         'pendiente': 'Pendiente',
-        'en_revision': 'En revision',
+        'en_revision': 'En revisión',
         'en_proceso': 'En proceso',
         'vencido': 'Vencido',
         'resuelto': 'Resuelto',
@@ -140,11 +153,9 @@ function mostrarTicket() {
     estadoEl.textContent = estadoLabel;
     estadoEl.className = 'estado ' + t.estado;
     
-    // Paso 4: Cargar datos actuales
     document.getElementById('asuntoTicket').value = t.asunto || 'pendiente_clasificar';
     document.getElementById('dependenciaTicket').value = t.dependencia || 'sistemas';
     
-    // Si es "no procede", deshabilitar y ocultar
     if (t.asunto === 'no_procede') {
         document.getElementById('dependenciaTicket').disabled = true;
         ocultarPasos(true);
@@ -153,7 +164,6 @@ function mostrarTicket() {
         document.getElementById('dependenciaTicket').disabled = false;
     }
     
-    // Mostrar pasos según lo que esté completado
     mostrarPaso4();
     mostrarEnvioDependencia();
     mostrarRespuestaDependencia();
@@ -193,7 +203,7 @@ function mostrarPaso4() {
         const asuntoLabel = {
             'queja': 'Queja',
             'sugerencia': 'Sugerencia',
-            'felicitacion': 'Felicitacion',
+            'felicitacion': 'Felicitación',
             'otros': 'Otros',
             'no_procede': 'No procede'
         }[t.asunto] || t.asunto;
@@ -250,7 +260,7 @@ async function actualizarDatosTicket() {
             fechaActualizacion: new Date().toISOString()
         });
         
-        await agregarHistorial('Actualizacion de datos', 'Asunto: ' + asunto + ', Dependencia: ' + dependencia);
+        await agregarHistorial('Actualización de datos', 'Asunto: ' + asunto + ', Dependencia: ' + dependencia);
         
         ocultarLoading(btn, textoOriginal);
         cargarTicket();
@@ -262,7 +272,7 @@ async function actualizarDatosTicket() {
     }
 }
 
-// ============ PASO 5: MOSTRAR ENVIO ============
+// ============ PASO 5: MOSTRAR ENVÍO ============
 function mostrarEnvioDependencia() {
     const envios = ticketData.enviosDependencia || [];
     if (envios.length === 0) {
@@ -281,9 +291,9 @@ function mostrarEnvioDependencia() {
         const fechaRec = ultimoEnvio.fechaRecibido ? ultimoEnvio.fechaRecibido : null;
         
         document.getElementById('envioDependenciaData').innerHTML = `
-            <p><strong>Descripcion:</strong> ${ultimoEnvio.descripcion}</p>
+            <p><strong>Descripción:</strong> ${ultimoEnvio.descripcion}</p>
             <p><strong>Oficio:</strong> ${ultimoEnvio.oficio}</p>
-            <p><strong>Fecha de elaboracion:</strong> ${fechaElab ? formatearFecha(fechaElab) : 'N/A'}</p>
+            <p><strong>Fecha de elaboración:</strong> ${fechaElab ? formatearFecha(fechaElab) : 'N/A'}</p>
             <p><strong>Fecha de recibido:</strong> ${fechaRec ? formatearFecha(fechaRec) : 'No registrada'}</p>
             <p><strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
             <p><strong>Registrado por:</strong> ${ultimoEnvio.usuario}</p>
@@ -315,12 +325,18 @@ function editarFechaRecibido() {
         align-items: center; z-index: 9999;
     `;
     
+    // Obtener la fecha de elaboración del último envío para validación
+    const envios = ticketData.enviosDependencia || [];
+    const ultimoEnvio = envios[envios.length - 1];
+    const fechaElaboracion = ultimoEnvio.fechaElaboracion || '';
+    
     modal.innerHTML = `
         <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
             <h3 style="margin-bottom: 20px;">Actualizar fecha de recibido</h3>
             <div class="form-group">
                 <label>Nueva fecha de recibido *</label>
-                <input type="date" id="nuevaFechaRecibido" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
+                <input type="date" id="nuevaFechaRecibido" min="${fechaElaboracion}" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
+                <small style="color: #666; display: block; margin-top: 4px;">La fecha debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)})</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="btnConfirmarFecha" class="btn-success" style="flex: 1;">Actualizar</button>
@@ -337,6 +353,12 @@ function editarFechaRecibido() {
         
         if (!nuevaFecha) {
             alert('Por favor, selecciona una fecha');
+            return;
+        }
+        
+        // Validar que no sea anterior a la fecha de elaboración
+        if (fechaElaboracion && !compararFechas(fechaElaboracion, nuevaFecha)) {
+            alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
             return;
         }
         
@@ -370,7 +392,7 @@ async function actualizarFechaRecibido(nuevaFecha) {
         const envios = data.enviosDependencia || [];
         
         if (envios.length === 0) {
-            alert('No hay envios registrados');
+            alert('No hay envíos registrados');
             return;
         }
         
@@ -382,7 +404,7 @@ async function actualizarFechaRecibido(nuevaFecha) {
             fechaActualizacion: new Date().toISOString()
         });
         
-        await agregarHistorial('Actualizacion de fecha de recibido', 'Nueva fecha: ' + formatearFecha(nuevaFecha));
+        await agregarHistorial('Actualización de fecha de recibido', 'Nueva fecha: ' + formatearFecha(nuevaFecha));
         
         cargarTicket();
         
@@ -392,7 +414,7 @@ async function actualizarFechaRecibido(nuevaFecha) {
     }
 }
 
-// ============ PASO 5: REGISTRAR ENVIO ============
+// ============ PASO 5: REGISTRAR ENVÍO ============
 async function registrarEnvioDependencia() {
     if (!puedeAvanzar(5)) return;
     
@@ -406,6 +428,24 @@ async function registrarEnvioDependencia() {
     
     if (!descripcion || !oficio || !fechaElaboracion) {
         alert('Por favor, completa todos los campos obligatorios');
+        ocultarLoading(btn, textoOriginal);
+        return;
+    }
+    
+    // Validar que la fecha de elaboración no sea anterior a la creación del ticket
+    const fechaCreacion = ticketData.fechaCreacion;
+    if (fechaCreacion) {
+        const fechaCreacionStr = new Date(fechaCreacion).toISOString().split('T')[0];
+        if (!compararFechas(fechaCreacionStr, fechaElaboracion)) {
+            alert('La fecha de elaboración no puede ser anterior a la fecha de creación del ticket');
+            ocultarLoading(btn, textoOriginal);
+            return;
+        }
+    }
+    
+    // Si hay fecha de recibido, validar que no sea anterior a la de elaboración
+    if (fechaRecibido && !compararFechas(fechaElaboracion, fechaRecibido)) {
+        alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
         ocultarLoading(btn, textoOriginal);
         return;
     }
@@ -435,19 +475,19 @@ async function registrarEnvioDependencia() {
             fechaActualizacion: new Date().toISOString()
         });
         
-        await agregarHistorial('Envio a dependencia', 'Oficio: ' + oficio + ' - ' + descripcion);
+        await agregarHistorial('Envío a dependencia', 'Oficio: ' + oficio + ' - ' + descripcion);
         
         ocultarLoading(btn, textoOriginal);
         cargarTicket();
         
     } catch (error) {
-        console.error('Error al registrar envio:', error);
+        console.error('Error al registrar envío:', error);
         alert('Error al registrar: ' + error.message);
         ocultarLoading(btn, textoOriginal);
     }
 }
 
-// ============ PASO 6: ENVIOS ADICIONALES ============
+// ============ PASO 6: ENVÍOS ADICIONALES ============
 function agregarEnvioAdicional() {
     if (!puedeAvanzar(6)) return;
     
@@ -457,18 +497,18 @@ function agregarEnvioAdicional() {
     div.className = 'envio-adicional';
     div.innerHTML = `
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #17a2b8;">
-            <h4>Envio adicional #${container.children.length + 1}</h4>
+            <h4>Envío adicional #${container.children.length + 1}</h4>
             <div class="form-row">
                 <div class="form-group full-width">
-                    <label>Descripcion *</label>
-                    <textarea class="desc-adicional" rows="4" placeholder="Describe el envio..."></textarea>
+                    <label>Descripción *</label>
+                    <textarea class="desc-adicional" rows="4" placeholder="Describe el envío..."></textarea>
                 </div>
                 <div class="form-group">
                     <label>Oficio *</label>
                     <input class="oficio-adicional" type="text" placeholder="Ej: OF-2026-002">
                 </div>
                 <div class="form-group">
-                    <label>Fecha elaboracion *</label>
+                    <label>Fecha elaboración *</label>
                     <input class="fecha-elaboracion-adicional" type="date">
                 </div>
                 <div class="form-group">
@@ -477,7 +517,7 @@ function agregarEnvioAdicional() {
                     <small>Opcional</small>
                 </div>
             </div>
-            <button onclick="registrarEnvioAdicional(this)" class="btn-success" style="margin-top: 10px;">Registrar envio</button>
+            <button onclick="registrarEnvioAdicional(this)" class="btn-success" style="margin-top: 10px;">Registrar envío</button>
             <button onclick="this.parentElement.remove()" style="background: #dc3545; margin-top: 10px; margin-left: 10px; color: white;">Eliminar</button>
         </div>
     `;
@@ -495,6 +535,23 @@ async function registrarEnvioAdicional(btn) {
     
     if (!descripcion || !oficio || !fechaElaboracion) {
         alert('Por favor, completa todos los campos obligatorios');
+        ocultarLoading(btn, textoOriginal);
+        return;
+    }
+    
+    // Validar fecha
+    const fechaCreacion = ticketData.fechaCreacion;
+    if (fechaCreacion) {
+        const fechaCreacionStr = new Date(fechaCreacion).toISOString().split('T')[0];
+        if (!compararFechas(fechaCreacionStr, fechaElaboracion)) {
+            alert('La fecha de elaboración no puede ser anterior a la fecha de creación del ticket');
+            ocultarLoading(btn, textoOriginal);
+            return;
+        }
+    }
+    
+    if (fechaRecibido && !compararFechas(fechaElaboracion, fechaRecibido)) {
+        alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
         ocultarLoading(btn, textoOriginal);
         return;
     }
@@ -522,7 +579,7 @@ async function registrarEnvioAdicional(btn) {
             fechaActualizacion: new Date().toISOString()
         });
         
-        await agregarHistorial('Envio adicional a dependencia', 'Oficio: ' + oficio + ' - ' + descripcion);
+        await agregarHistorial('Envío adicional a dependencia', 'Oficio: ' + oficio + ' - ' + descripcion);
         
         ocultarLoading(btn, textoOriginal);
         parent.remove();
@@ -546,7 +603,7 @@ function cargarEnviosAdicionales() {
     }
     
     if (adicionales.length === 0) {
-        container.innerHTML = '<p style="color: #999;">No hay envios adicionales</p>';
+        container.innerHTML = '<p style="color: #999;">No hay envíos adicionales</p>';
         return;
     }
     
@@ -560,10 +617,10 @@ function cargarEnviosAdicionales() {
         
         html += `
             <div class="envio-item" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #17a2b8;">
-                <p><strong>Envio adicional #${index + 1}</strong> - ${formatearFechaHora(fecha)}</p>
+                <p><strong>Envío adicional #${index + 1}</strong> - ${formatearFechaHora(fecha)}</p>
                 <p><strong>Oficio:</strong> ${envio.oficio}</p>
-                <p><strong>Descripcion:</strong> ${envio.descripcion}</p>
-                <p><small>Elaboracion: ${fechaElab ? formatearFecha(fechaElab) : 'N/A'} | Recibido: ${fechaRec ? formatearFecha(fechaRec) : 'No registrado'}</small></p>
+                <p><strong>Descripción:</strong> ${envio.descripcion}</p>
+                <p><small>Elaboración: ${fechaElab ? formatearFecha(fechaElab) : 'N/A'} | Recibido: ${fechaRec ? formatearFecha(fechaRec) : 'No registrado'}</small></p>
                 <p><small>Por: ${envio.usuario}</small></p>
                 ${!tieneFechaRecibido ? `<button onclick="editarFechaRecibidoAdicional('${index}')" class="btn-secondary" style="margin-top: 5px; font-size: 12px;">Actualizar fecha de recibido</button>` : ''}
             </div>
@@ -573,8 +630,19 @@ function cargarEnviosAdicionales() {
     container.innerHTML = html;
 }
 
-// ============ ACTUALIZAR FECHA DE RECIBIDO PARA ENVIO ADICIONAL ============
+// ============ ACTUALIZAR FECHA DE RECIBIDO PARA ENVÍO ADICIONAL ============
 function editarFechaRecibidoAdicional(index) {
+    const envios = ticketData.enviosDependencia || [];
+    const adicionales = envios.filter(e => e.tipo === 'envio_adicional');
+    const envio = adicionales[index];
+    
+    if (!envio) {
+        alert('Envío no encontrado');
+        return;
+    }
+    
+    const fechaElaboracion = envio.fechaElaboracion || '';
+    
     const modal = document.createElement('div');
     modal.id = 'modalFechaRecibidoAdicional';
     modal.style.cssText = `
@@ -588,7 +656,8 @@ function editarFechaRecibidoAdicional(index) {
             <h3 style="margin-bottom: 20px;">Actualizar fecha de recibido</h3>
             <div class="form-group">
                 <label>Nueva fecha de recibido *</label>
-                <input type="date" id="nuevaFechaRecibidoAdicional" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
+                <input type="date" id="nuevaFechaRecibidoAdicional" min="${fechaElaboracion}" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
+                <small style="color: #666; display: block; margin-top: 4px;">La fecha debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)})</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="btnConfirmarFechaAdicional" class="btn-success" style="flex: 1;">Actualizar</button>
@@ -605,6 +674,11 @@ function editarFechaRecibidoAdicional(index) {
         
         if (!nuevaFecha) {
             alert('Por favor, selecciona una fecha');
+            return;
+        }
+        
+        if (fechaElaboracion && !compararFechas(fechaElaboracion, nuevaFecha)) {
+            alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
             return;
         }
         
@@ -639,7 +713,7 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
         
         const adicionales = envios.filter(e => e.tipo === 'envio_adicional');
         if (index >= adicionales.length) {
-            alert('Envio no encontrado');
+            alert('Envío no encontrado');
             return;
         }
         
@@ -656,7 +730,7 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
         }
         
         if (realIndex === -1) {
-            alert('Envio no encontrado');
+            alert('Envío no encontrado');
             return;
         }
         
@@ -667,7 +741,7 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
             fechaActualizacion: new Date().toISOString()
         });
         
-        await agregarHistorial('Actualizacion de fecha de recibido (adicional)', 'Nueva fecha: ' + formatearFecha(nuevaFecha));
+        await agregarHistorial('Actualización de fecha de recibido (adicional)', 'Nueva fecha: ' + formatearFecha(nuevaFecha));
         
         cargarTicket();
         
@@ -695,7 +769,7 @@ function mostrarRespuestaDependencia() {
     const fechaResp = ultimaRespuesta.fechaRespuesta ? ultimaRespuesta.fechaRespuesta : null;
     
     document.getElementById('respuestaDependenciaData').innerHTML = `
-        <p><strong>Descripcion:</strong> ${ultimaRespuesta.descripcion}</p>
+        <p><strong>Descripción:</strong> ${ultimaRespuesta.descripcion}</p>
         <p><strong>Oficio:</strong> ${ultimaRespuesta.oficio}</p>
         <p><strong>Fecha de respuesta:</strong> ${fechaResp ? formatearFecha(fechaResp) : 'N/A'}</p>
         <p><strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
@@ -719,6 +793,15 @@ async function registrarRespuestaDependencia() {
     
     if (!descripcion || !oficio || !fecha) {
         alert('Por favor, completa todos los campos');
+        ocultarLoading(btn, textoOriginal);
+        return;
+    }
+    
+    // Validar que la fecha de respuesta no sea anterior a la fecha de recibido
+    const envios = ticketData.enviosDependencia || [];
+    const ultimoEnvio = envios[envios.length - 1];
+    if (ultimoEnvio && ultimoEnvio.fechaRecibido && !compararFechas(ultimoEnvio.fechaRecibido, fecha)) {
+        alert('La fecha de respuesta no puede ser anterior a la fecha de recibido en dependencia');
         ocultarLoading(btn, textoOriginal);
         return;
     }
@@ -777,7 +860,7 @@ function mostrarRespuestaCiudadano() {
     const fechaResp = ultimaRespuesta.fechaRespuesta ? ultimaRespuesta.fechaRespuesta : null;
     
     document.getElementById('respuestaCiudadanoData').innerHTML = `
-        <p><strong>Descripcion:</strong> ${ultimaRespuesta.descripcion}</p>
+        <p><strong>Descripción:</strong> ${ultimaRespuesta.descripcion}</p>
         <p><strong>Fecha de respuesta:</strong> ${fechaResp ? formatearFecha(fechaResp) : 'N/A'}</p>
         <p><strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
         <p><strong>Registrado por:</strong> ${ultimaRespuesta.usuario}</p>
@@ -799,6 +882,15 @@ async function registrarRespuestaCiudadano() {
     
     if (!descripcion || !fecha) {
         alert('Por favor, completa todos los campos');
+        ocultarLoading(btn, textoOriginal);
+        return;
+    }
+    
+    // Validar que la fecha de respuesta no sea anterior a la fecha de respuesta de dependencia
+    const respuestasDep = ticketData.respuestasDependencia || [];
+    const ultimaRespDep = respuestasDep[respuestasDep.length - 1];
+    if (ultimaRespDep && ultimaRespDep.fechaRespuesta && !compararFechas(ultimaRespDep.fechaRespuesta, fecha)) {
+        alert('La fecha de respuesta al ciudadano no puede ser anterior a la fecha de respuesta de la dependencia');
         ocultarLoading(btn, textoOriginal);
         return;
     }
@@ -838,7 +930,6 @@ async function registrarRespuestaCiudadano() {
 
 // ============ PASO 9: GENERAR REPORTE ============
 async function generarReporte() {
-    // Verificar si tiene respuesta al ciudadano
     const respuestasCiudadano = ticketData.respuestasCiudadano || [];
     if (respuestasCiudadano.length === 0) {
         alert('Primero debes registrar la respuesta al ciudadano (Paso 8)');
@@ -849,19 +940,16 @@ async function generarReporte() {
     const textoOriginal = mostrarLoading(btn);
     
     try {
-        // Si el ticket no está resuelto, marcarlo como resuelto
         if (ticketData.estado !== 'resuelto') {
             await db.collection('tickets').doc(ticketId).update({
                 estado: 'resuelto',
                 fechaResolucion: new Date().toISOString(),
                 fechaActualizacion: new Date().toISOString()
             });
-            await agregarHistorial('Ticket resuelto', 'Se genero el reporte final');
-            // Recargar datos
+            await agregarHistorial('Ticket resuelto', 'Se generó el reporte final');
             await cargarTicket();
         }
         
-        // Generar PDF del reporte
         await generarPDFReporte();
         
         ocultarLoading(btn, textoOriginal);
@@ -881,13 +969,11 @@ function generarPDFReporte() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             
-            // Configurar márgenes
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 15;
             let y = margin;
             
-            // Función para agregar texto con wrap automático
             function addWrappedText(text, x, y, maxWidth, fontSize = 10, style = 'normal') {
                 doc.setFontSize(fontSize);
                 doc.setFont('helvetica', style);
@@ -896,42 +982,40 @@ function generarPDFReporte() {
                 return y + (lines.length * (fontSize * 0.4));
             }
             
-            // Función para agregar línea horizontal
-            function addLine(y, color = '#007bff') {
+            function addLine(y, color = '#2563eb') {
                 doc.setDrawColor(color);
                 doc.setLineWidth(0.5);
                 doc.line(margin, y, pageWidth - margin, y);
                 return y + 3;
             }
             
-            // ============ HEADER ============
+            // HEADER
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(26, 26, 46);
+            doc.setTextColor(15, 23, 42);
             doc.text('REPORTE DE SEGUIMIENTO', pageWidth / 2, y, { align: 'center' });
             y += 10;
             
             doc.setFontSize(14);
             doc.setTextColor(0, 0, 0);
-            doc.text(`Folio: ${t.folio}`, pageWidth / 2, y, { align: 'center' });
+            doc.text('Folio: ' + t.folio, pageWidth / 2, y, { align: 'center' });
             y += 7;
             
             doc.setFontSize(10);
             doc.setTextColor(85, 85, 85);
-            doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, pageWidth / 2, y, { align: 'center' });
+            doc.text('Generado: ' + new Date().toLocaleString('es-MX'), pageWidth / 2, y, { align: 'center' });
             y += 7;
             
             y = addLine(y);
             y += 5;
             
-            // ============ 1. DATOS GENERALES ============
+            // 1. DATOS GENERALES
             doc.setFontSize(13);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(0, 123, 255);
+            doc.setTextColor(37, 99, 235);
             doc.text('1. DATOS GENERALES', margin, y);
             y += 6;
             
-            // Tabla de datos generales
             const datos = [
                 ['Folio:', t.folio],
                 ['Nombre:', t.nombre],
@@ -958,7 +1042,6 @@ function generarPDFReporte() {
             });
             y += 3;
             
-            // Mensaje del usuario
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
             doc.text('Mensaje del usuario:', margin, y);
@@ -972,12 +1055,12 @@ function generarPDFReporte() {
             y = addLine(y);
             y += 5;
             
-            // ============ 2. ENVÍOS A DEPENDENCIA ============
+            // 2. ENVÍOS A DEPENDENCIA
             const envios = t.enviosDependencia || [];
             if (envios.length > 0) {
                 doc.setFontSize(13);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(0, 123, 255);
+                doc.setTextColor(37, 99, 235);
                 doc.text('2. ENVÍOS A DEPENDENCIA', margin, y);
                 y += 6;
                 
@@ -989,26 +1072,25 @@ function generarPDFReporte() {
                     doc.setFontSize(10);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`Envío ${tipo} #${index + 1} - ${formatearFechaHora(envio.fecha)}`, margin, y);
+                    doc.text('Envío ' + tipo + ' #' + (index + 1) + ' - ' + formatearFechaHora(envio.fecha), margin, y);
                     y += 4;
                     
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(50, 50, 50);
-                    doc.text(`Oficio: ${envio.oficio}`, margin + 3, y);
+                    doc.text('Oficio: ' + envio.oficio, margin + 3, y);
                     y += 4;
                     
-                    const descLines = doc.splitTextToSize(`Descripción: ${envio.descripcion}`, pageWidth - (margin * 2) - 3);
+                    const descLines = doc.splitTextToSize('Descripción: ' + envio.descripcion, pageWidth - (margin * 2) - 3);
                     doc.text(descLines, margin + 3, y);
                     y += descLines.length * 4;
                     
                     doc.setTextColor(85, 85, 85);
                     doc.setFontSize(9);
-                    doc.text(`Elaboración: ${fechaElab} | Recibido: ${fechaRec}`, margin + 3, y);
+                    doc.text('Elaboración: ' + fechaElab + ' | Recibido: ' + fechaRec, margin + 3, y);
                     y += 4;
-                    doc.text(`Registrado por: ${envio.usuario}`, margin + 3, y);
+                    doc.text('Registrado por: ' + envio.usuario, margin + 3, y);
                     y += 5;
                     
-                    // Verificar si necesitamos nueva página
                     if (y > pageHeight - 20) {
                         doc.addPage();
                         y = margin;
@@ -1020,12 +1102,12 @@ function generarPDFReporte() {
             y = addLine(y);
             y += 5;
             
-            // ============ 3. RESPUESTAS DE DEPENDENCIA ============
+            // 3. RESPUESTAS DE DEPENDENCIA
             const respuestasDep = t.respuestasDependencia || [];
             if (respuestasDep.length > 0) {
                 doc.setFontSize(13);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(0, 123, 255);
+                doc.setTextColor(37, 99, 235);
                 doc.text('3. RESPUESTAS DE DEPENDENCIA', margin, y);
                 y += 6;
                 
@@ -1035,23 +1117,23 @@ function generarPDFReporte() {
                     doc.setFontSize(10);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`Respuesta #${index + 1} - ${formatearFechaHora(resp.fecha)}`, margin, y);
+                    doc.text('Respuesta #' + (index + 1) + ' - ' + formatearFechaHora(resp.fecha), margin, y);
                     y += 4;
                     
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(50, 50, 50);
-                    doc.text(`Oficio: ${resp.oficio}`, margin + 3, y);
+                    doc.text('Oficio: ' + resp.oficio, margin + 3, y);
                     y += 4;
                     
-                    const descLines = doc.splitTextToSize(`Descripción: ${resp.descripcion}`, pageWidth - (margin * 2) - 3);
+                    const descLines = doc.splitTextToSize('Descripción: ' + resp.descripcion, pageWidth - (margin * 2) - 3);
                     doc.text(descLines, margin + 3, y);
                     y += descLines.length * 4;
                     
                     doc.setTextColor(85, 85, 85);
                     doc.setFontSize(9);
-                    doc.text(`Fecha de respuesta: ${fechaResp}`, margin + 3, y);
+                    doc.text('Fecha de respuesta: ' + fechaResp, margin + 3, y);
                     y += 4;
-                    doc.text(`Registrado por: ${resp.usuario}`, margin + 3, y);
+                    doc.text('Registrado por: ' + resp.usuario, margin + 3, y);
                     y += 5;
                     
                     if (y > pageHeight - 20) {
@@ -1065,12 +1147,12 @@ function generarPDFReporte() {
             y = addLine(y);
             y += 5;
             
-            // ============ 4. RESPUESTAS AL CIUDADANO ============
+            // 4. RESPUESTAS AL CIUDADANO
             const respuestasCiudadano = t.respuestasCiudadano || [];
             if (respuestasCiudadano.length > 0) {
                 doc.setFontSize(13);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(0, 123, 255);
+                doc.setTextColor(37, 99, 235);
                 doc.text('4. RESPUESTAS AL CIUDADANO', margin, y);
                 y += 6;
                 
@@ -1080,20 +1162,20 @@ function generarPDFReporte() {
                     doc.setFontSize(10);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`Respuesta #${index + 1} - ${formatearFechaHora(resp.fecha)}`, margin, y);
+                    doc.text('Respuesta #' + (index + 1) + ' - ' + formatearFechaHora(resp.fecha), margin, y);
                     y += 4;
                     
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(50, 50, 50);
-                    const descLines = doc.splitTextToSize(`Descripción: ${resp.descripcion}`, pageWidth - (margin * 2) - 3);
+                    const descLines = doc.splitTextToSize('Descripción: ' + resp.descripcion, pageWidth - (margin * 2) - 3);
                     doc.text(descLines, margin + 3, y);
                     y += descLines.length * 4;
                     
                     doc.setTextColor(85, 85, 85);
                     doc.setFontSize(9);
-                    doc.text(`Fecha de respuesta: ${fechaResp}`, margin + 3, y);
+                    doc.text('Fecha de respuesta: ' + fechaResp, margin + 3, y);
                     y += 4;
-                    doc.text(`Registrado por: ${resp.usuario}`, margin + 3, y);
+                    doc.text('Registrado por: ' + resp.usuario, margin + 3, y);
                     y += 5;
                     
                     if (y > pageHeight - 20) {
@@ -1107,12 +1189,12 @@ function generarPDFReporte() {
             y = addLine(y);
             y += 5;
             
-            // ============ 5. HISTORIAL ============
+            // 5. HISTORIAL
             const historial = t.historialSeguimiento || [];
             if (historial.length > 0) {
                 doc.setFontSize(13);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(0, 123, 255);
+                doc.setTextColor(37, 99, 235);
                 doc.text('5. HISTORIAL', margin, y);
                 y += 6;
                 
@@ -1120,7 +1202,7 @@ function generarPDFReporte() {
                     doc.setFontSize(9);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`${h.accion} - ${formatearFechaHora(h.fecha)}`, margin, y);
+                    doc.text(h.accion + ' - ' + formatearFechaHora(h.fecha), margin, y);
                     y += 4;
                     
                     doc.setFont('helvetica', 'normal');
@@ -1130,7 +1212,7 @@ function generarPDFReporte() {
                     
                     doc.setTextColor(85, 85, 85);
                     doc.setFontSize(8);
-                    doc.text(`Por: ${h.usuario}`, margin + 3, y);
+                    doc.text('Por: ' + h.usuario, margin + 3, y);
                     y += 5;
                     
                     if (y > pageHeight - 15) {
@@ -1140,7 +1222,7 @@ function generarPDFReporte() {
                 });
             }
             
-            // ============ FOOTER ============
+            // FOOTER
             if (y > pageHeight - 20) {
                 doc.addPage();
                 y = margin;
@@ -1151,14 +1233,13 @@ function generarPDFReporte() {
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(85, 85, 85);
-            doc.text(`Reporte generado automáticamente el ${new Date().toLocaleString('es-MX')}`, pageWidth / 2, y, { align: 'center' });
+            doc.text('Reporte generado automáticamente el ' + new Date().toLocaleString('es-MX'), pageWidth / 2, y, { align: 'center' });
             y += 4;
             doc.setTextColor(150, 150, 150);
             doc.setFontSize(8);
             doc.text('Sistema de Seguimiento de Tickets', pageWidth / 2, y, { align: 'center' });
             
-            // Guardar PDF
-            doc.save(`reporte-${t.folio}-${new Date().getTime()}.pdf`);
+            doc.save('reporte-' + t.folio + '-' + new Date().getTime() + '.pdf');
             resolve();
             
         } catch (error) {
@@ -1168,7 +1249,7 @@ function generarPDFReporte() {
     });
 }
 
-// ============ CONTADOR DE DIAS HABILES ============
+// ============ CONTADOR DE DÍAS HÁBILES ============
 function actualizarContadorDias() {
     const contadorDiv = document.getElementById('diasContador');
     const alertaDiv = document.getElementById('alertasVencimiento');
@@ -1183,19 +1264,25 @@ function actualizarContadorDias() {
     
     const envios = ticketData.enviosDependencia || [];
     if (envios.length === 0) {
-        contadorDiv.innerHTML = '<p style="color: #999;">No hay envio registrado</p>';
+        contadorDiv.innerHTML = '<p style="color: #999;">No hay envío registrado</p>';
         alertaDiv.style.display = 'none';
         paso6Div.style.display = 'none';
         return;
     }
     
-    const ultimoEnvio = envios[envios.length - 1];
+    let ultimoConFecha = null;
+    for (let i = envios.length - 1; i >= 0; i--) {
+        if (envios[i].fechaRecibido) {
+            ultimoConFecha = envios[i];
+            break;
+        }
+    }
     
-    if (!ultimoEnvio.fechaRecibido) {
+    if (!ultimoConFecha) {
         contadorDiv.innerHTML = `
-            <div style="background: #fff3cd; padding: 15px; border-radius: 8px;">
-                <p><strong>No se puede contar dias habiles</strong></p>
-                <p>La fecha de recibido en dependencia no esta registrada.</p>
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px;">
+                <p><strong>No se puede contar días hábiles</strong></p>
+                <p>La fecha de recibido en dependencia no está registrada.</p>
                 <p>Por favor, actualiza la fecha de recibido para comenzar el conteo.</p>
             </div>
         `;
@@ -1204,7 +1291,7 @@ function actualizarContadorDias() {
         return;
     }
     
-    const fechaBase = new Date(ultimoEnvio.fechaRecibido + 'T00:00:00');
+    const fechaBase = new Date(ultimoConFecha.fechaRecibido + 'T00:00:00');
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     
@@ -1213,17 +1300,17 @@ function actualizarContadorDias() {
     
     contadorDiv.innerHTML = `
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-            <p><strong>Fecha de recibido:</strong> ${formatearFecha(ultimoEnvio.fechaRecibido)}</p>
-            <p><strong>Dias habiles transcurridos:</strong> <span style="font-size: 1.5em; font-weight: bold; ${diasHabiles >= 10 ? 'color: #dc3545;' : 'color: #28a745;'}">${diasHabiles}</span></p>
-            <p><strong>Limite:</strong> 10 dias habiles</p>
-            ${diasHabiles < 10 ? '<p><strong>Dias restantes:</strong> ' + (10 - diasHabiles) + '</p>' : ''}
+            <p><strong>Fecha de recibido:</strong> ${formatearFecha(ultimoConFecha.fechaRecibido)}</p>
+            <p><strong>Días hábiles transcurridos:</strong> <span style="font-size: 1.5em; font-weight: bold; ${diasHabiles >= 10 ? 'color: #dc2626;' : 'color: #16a34a;'}">${diasHabiles}</span></p>
+            <p><strong>Límite:</strong> 10 días hábiles</p>
+            ${diasHabiles < 10 ? '<p><strong>Días restantes:</strong> ' + (10 - diasHabiles) + '</p>' : ''}
         </div>
     `;
     
     if (diasHabiles >= 10) {
         alertaDiv.style.display = 'block';
         document.getElementById('mensajeVencimiento').textContent = 
-            'Este ticket tiene ' + diasHabiles + ' dias habiles sin respuesta. Se recomienda enviar un nuevo oficio.';
+            'Este ticket tiene ' + diasHabiles + ' días hábiles sin respuesta. Se recomienda enviar un nuevo oficio.';
         
         paso6Div.style.display = 'block';
         
@@ -1241,7 +1328,7 @@ function actualizarContadorDias() {
     }
 }
 
-// ============ CALCULAR DIAS HABILES ============
+// ============ CALCULAR DÍAS HÁBILES ============
 function calcularDiasHabiles(fechaInicio, fechaFin) {
     let count = 0;
     const current = new Date(fechaInicio);

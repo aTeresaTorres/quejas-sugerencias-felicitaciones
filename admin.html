@@ -5,59 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administración - Buzón</title>
     <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="admin-container">
+        <!-- HEADER -->
         <header>
-            <h1>📊 Panel de Administración</h1>
-            <div>
-                <span id="userEmail" style="margin-right: 15px; color: #666;"></span>
-                <button id="btnLogout" class="btn-danger">Cerrar sesión</button>
+            <h1><i class="fas fa-chart-pie"></i> Panel de Administración</h1>
+            <div class="header-user">
+                <span id="userEmail"><i class="fas fa-user-circle"></i> <span id="userEmailText"></span></span>
+                <button id="btnLogout" class="btn-danger"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
             </div>
         </header>
 
-        <!-- ESTADÍSTICAS RÁPIDAS -->
+        <!-- ESTADÍSTICAS -->
         <section class="stats">
-            <div class="stat-card">
+            <div class="stat-card stat-total">
                 <span class="stat-number" id="totalTickets">0</span>
                 <span class="stat-label">Total</span>
             </div>
-            <div class="stat-card">
+            <div class="stat-card stat-pendientes">
                 <span class="stat-number" id="pendientes">0</span>
                 <span class="stat-label">Pendientes</span>
             </div>
-            <div class="stat-card">
+            <div class="stat-card stat-revision">
                 <span class="stat-number" id="enRevision">0</span>
                 <span class="stat-label">En revisión</span>
             </div>
-            <div class="stat-card">
-                <span class="stat-number" id="resueltos">0</span>
-                <span class="stat-label">Resueltos</span>
+            <div class="stat-card stat-proceso">
+                <span class="stat-number" id="enProceso">0</span>
+                <span class="stat-label">En proceso</span>
             </div>
-            <div class="stat-card">
+            <div class="stat-card stat-vencidos">
                 <span class="stat-number" id="vencidos">0</span>
                 <span class="stat-label">Vencidos</span>
             </div>
+            <div class="stat-card stat-resueltos">
+                <span class="stat-number" id="resueltos">0</span>
+                <span class="stat-label">Resueltos</span>
+            </div>
         </section>
 
-        <!-- FILTROS Y BÚSQUEDA -->
-        <section class="filtros">
-            <h3>🔍 Filtros y Búsqueda</h3>
-            
-            <!-- BÚSQUEDA GLOBAL -->
+        <!-- BÚSQUEDA GLOBAL (Centro) -->
+        <section class="busqueda-section">
             <div class="busqueda-global">
-                <div class="form-group" style="flex: 1;">
-                    <label>🔎 Búsqueda global</label>
-                    <input type="text" id="busquedaGlobal" placeholder="Buscar por folio, nombre, contacto...">
-                </div>
-                <button id="btnBuscar" style="margin-top: 24px;">Buscar</button>
-                <button id="btnLimpiarBusqueda" style="margin-top: 24px; background: #6c757d;">Limpiar</button>
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="busquedaGlobal" placeholder="Buscar por folio, nombre, contacto...">
+                <button id="btnBuscar">Buscar</button>
+                <button id="btnLimpiarBusqueda" class="btn-secondary">Limpiar</button>
             </div>
+        </section>
 
-            <!-- FILTROS DE FECHA AGRUPADOS -->
-            <div class="filtros-fecha">
-                <div class="form-group">
-                    <label>Tipo de filtro de fecha</label>
+        <!-- FILTROS (Izquierda) -->
+        <section class="filtros">
+            <div class="filtros-header">
+                <h3><i class="fas fa-filter"></i> Filtros</h3>
+            </div>
+            
+            <div class="filtros-grid">
+                <div class="filtro-grupo">
+                    <label>Tipo de fecha</label>
                     <select id="tipoFiltroFecha">
                         <option value="ninguno">Sin filtro de fecha</option>
                         <option value="anio">Año específico</option>
@@ -66,13 +73,12 @@
                         <option value="dia">Día específico</option>
                     </select>
                 </div>
-                
-                <!-- Contenedor dinámico para filtros de fecha -->
-                <div id="filtroFechaContainer">
-                    <!-- Se llena dinámicamente con JS -->
+
+                <div class="filtro-grupo" id="filtroFechaContainer">
+                    <p style="color: #999; font-size: 0.85em; padding: 5px 0;">Selecciona un tipo de filtro de fecha</p>
                 </div>
-                
-                <div class="form-group">
+
+                <div class="filtro-grupo">
                     <label>Fecha de qué acción</label>
                     <select id="filtroTipoAccion">
                         <option value="cualquier">Cualquier acción</option>
@@ -84,11 +90,8 @@
                         <option value="resolucion">Ticket resuelto</option>
                     </select>
                 </div>
-            </div>
 
-            <!-- FILTROS ADICIONALES -->
-            <div class="filtros-grid">
-                <div class="form-group">
+                <div class="filtro-grupo">
                     <label>Asunto</label>
                     <select id="filtroAsunto">
                         <option value="">Todos</option>
@@ -100,7 +103,8 @@
                         <option value="otros">Otros</option>
                     </select>
                 </div>
-                <div class="form-group">
+
+                <div class="filtro-grupo">
                     <label>Dependencia</label>
                     <select id="filtroDependencia">
                         <option value="">Todas</option>
@@ -113,7 +117,8 @@
                         <option value="compras">Compras</option>
                     </select>
                 </div>
-                <div class="form-group">
+
+                <div class="filtro-grupo">
                     <label>Estado</label>
                     <select id="filtroEstado">
                         <option value="">Todos</option>
@@ -125,18 +130,19 @@
                         <option value="cerrado">Cerrado</option>
                     </select>
                 </div>
-                <div class="form-group" style="display: flex; align-items: flex-end;">
-                    <button id="btnAplicarFiltros" style="width: 100%;">Aplicar filtros</button>
-                    <button id="btnLimpiarFiltros" style="width: 100%; background: #6c757d; margin-left: 10px;">Limpiar</button>
-                </div>
+            </div>
+
+            <div class="filtros-acciones">
+                <button id="btnAplicarFiltros" class="btn-primary"><i class="fas fa-check"></i> Aplicar filtros</button>
+                <button id="btnLimpiarFiltros" class="btn-secondary"><i class="fas fa-undo"></i> Limpiar</button>
+                <button id="btnRecargar" class="btn-success"><i class="fas fa-sync"></i> Recargar</button>
             </div>
         </section>
 
         <!-- LISTA DE TICKETS -->
         <section class="tickets-list">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>📋 Tickets registrados <span id="contadorTickets" style="font-size: 0.8em; color: #666;"></span></h3>
-                <button id="btnRecargar" style="background: #28a745;">🔄 Recargar</button>
+            <div class="tickets-header">
+                <h3><i class="fas fa-list"></i> Tickets registrados <span id="contadorTickets"></span></h3>
             </div>
             <div id="ticketsContainer">
                 <p style="text-align: center; color: #999;">Cargando tickets...</p>
@@ -144,7 +150,7 @@
         </section>
     </div>
 
-    <!-- MODAL PARA VER TICKET (SOLO LECTURA) -->
+    <!-- MODAL PARA VER TICKET -->
     <div id="modalVerTicket" class="modal">
         <div class="modal-content">
             <span class="close" onclick="cerrarModalVer()">&times;</span>
