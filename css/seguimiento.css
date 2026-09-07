@@ -40,8 +40,8 @@ header h1 {
     font-weight: 600;
 }
 
-header h1::before {
-    content: "📋 ";
+header h1 i {
+    margin-right: 8px;
 }
 
 header .header-actions {
@@ -178,6 +178,11 @@ header .btn-volver:hover {
     font-size: 0.9rem;
 }
 
+.paso .form-group label .required {
+    color: #8b1a1a;
+    margin-left: 2px;
+}
+
 .paso .form-group input,
 .paso .form-group select,
 .paso .form-group textarea {
@@ -251,16 +256,6 @@ header .btn-volver:hover {
     transform: translateY(-1px);
 }
 
-.btn-danger {
-    background: #8b1a1a;
-    color: white;
-}
-
-.btn-danger:hover {
-    background: #6a1212;
-    transform: translateY(-1px);
-}
-
 /* ============ ESTADOS ============ */
 .estado {
     display: inline-block;
@@ -303,7 +298,7 @@ header .btn-volver:hover {
 }
 
 /* ============ REGISTRO COMPLETADO ============ */
-#paso4Registrado,
+#paso1Registrado,
 #envioDependenciaRegistrado,
 #respuestaDependenciaRegistrada,
 #respuestaCiudadanoRegistrada {

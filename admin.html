@@ -26,42 +26,40 @@
 
             <!-- FILTROS -->
             <div class="filtros-sidebar">
-                <!-- FECHA -->
+                <!-- FECHA (agrupado con acción) -->
                 <div class="filtro-seccion">
-                    <div class="filtro-titulo">
-                        <i class="fas fa-calendar"></i> Fecha
+                    <div class="filtro-titulo accordion-header" onclick="toggleFiltro('fechaAccion')">
+                        <i class="fas fa-calendar"></i> Fecha y acción
                         <span class="filtro-count" id="fechaCount"></span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="fecha-filtros">
-                        <select id="tipoFiltroFecha">
-                            <option value="ninguno">Sin filtro de fecha</option>
-                            <option value="anio">Año específico</option>
-                            <option value="mes">Mes específico</option>
-                            <option value="periodo">Periodo (de - a)</option>
-                            <option value="dia">Día específico</option>
-                        </select>
-                        <div id="filtroFechaContainer">
-                            <p style="color: var(--text-muted); font-size: 0.75rem;">Selecciona un tipo de filtro</p>
+                    <div class="accordion-content" id="filtroFechaAccion">
+                        <div class="fecha-filtros">
+                            <select id="tipoFiltroFecha">
+                                <option value="ninguno">Sin filtro de fecha</option>
+                                <option value="anio">Año específico</option>
+                                <option value="mes">Mes específico</option>
+                                <option value="periodo">Periodo (de - a)</option>
+                                <option value="dia">Día específico</option>
+                            </select>
+                            <div id="filtroFechaContainer">
+                                <p style="color: var(--text-muted); font-size: 0.75rem;">Selecciona un tipo de filtro</p>
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <hr class="filtro-divider">
-
-                <!-- ACCIÓN -->
-                <div class="filtro-seccion">
-                    <div class="filtro-titulo">
-                        <i class="fas fa-tasks"></i> Fecha de qué acción
-                        <span class="filtro-count" id="accionCount"></span>
-                    </div>
-                    <div class="checkbox-group" id="filtroTipoAccionContainer">
-                        <label><input type="checkbox" value="cualquier" checked> Cualquier acción <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="creacion"> Generación del ticket <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="actualizacion"> Actualización de datos <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="envio_dependencia"> Envío a dependencia <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="respuesta_dependencia"> Respuesta de dependencia <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="respuesta_ciudadano"> Respuesta al ciudadano <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="resolucion"> Ticket resuelto <span class="check-count"></span></label>
+                        <hr class="filtro-divider">
+                        <div class="filtro-titulo" style="font-size: 0.7rem; margin-top: 6px;">
+                            <i class="fas fa-tasks"></i> Fecha de qué acción
+                            <span class="filtro-count" id="accionCount"></span>
+                        </div>
+                        <div class="checkbox-group" id="filtroTipoAccionContainer">
+                            <label><input type="checkbox" value="cualquier" checked> Cualquier acción <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="creacion"> Generación del ticket <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="actualizacion"> Actualización de datos <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="envio_dependencia"> Envío a dependencia <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="respuesta_dependencia"> Respuesta de dependencia <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="respuesta_ciudadano"> Respuesta al ciudadano <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="resolucion"> Ticket resuelto <span class="check-count"></span></label>
+                        </div>
                     </div>
                 </div>
 
@@ -69,17 +67,20 @@
 
                 <!-- ASUNTO -->
                 <div class="filtro-seccion">
-                    <div class="filtro-titulo">
+                    <div class="filtro-titulo accordion-header" onclick="toggleFiltro('asunto')">
                         <i class="fas fa-tag"></i> Asunto
                         <span class="filtro-count" id="asuntoCount"></span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="checkbox-group" id="filtroAsuntoContainer">
-                        <label><input type="checkbox" value="queja"> Queja <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="sugerencia"> Sugerencia <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="felicitacion"> Felicitación <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="pendiente_clasificar"> Por clasificar <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="no_procede"> No procede <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="otros"> Otros <span class="check-count"></span></label>
+                    <div class="accordion-content" id="filtroAsunto">
+                        <div class="checkbox-group" id="filtroAsuntoContainer">
+                            <label><input type="checkbox" value="queja"> Queja <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="sugerencia"> Sugerencia <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="felicitacion"> Felicitación <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="pendiente_clasificar"> Por clasificar <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="no_procede"> No procede <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="otros"> Otros <span class="check-count"></span></label>
+                        </div>
                     </div>
                 </div>
 
@@ -87,18 +88,15 @@
 
                 <!-- DEPENDENCIA -->
                 <div class="filtro-seccion">
-                    <div class="filtro-titulo">
+                    <div class="filtro-titulo accordion-header" onclick="toggleFiltro('dependencia')">
                         <i class="fas fa-building"></i> Dependencia
                         <span class="filtro-count" id="dependenciaCount"></span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="checkbox-group" id="filtroDependenciaContainer">
-                        <label><input type="checkbox" value="sistemas"> Sistemas <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="recursos_humanos"> Recursos Humanos <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="finanzas"> Finanzas <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="operaciones"> Operaciones <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="atencion_cliente"> Atención al Cliente <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="juridico"> Jurídico <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="compras"> Compras <span class="check-count"></span></label>
+                    <div class="accordion-content" id="filtroDependencia">
+                        <div class="checkbox-group" id="filtroDependenciaContainer">
+                            <!-- Se llenará dinámicamente desde Firestore -->
+                        </div>
                     </div>
                 </div>
 
@@ -106,17 +104,20 @@
 
                 <!-- ESTADO -->
                 <div class="filtro-seccion">
-                    <div class="filtro-titulo">
+                    <div class="filtro-titulo accordion-header" onclick="toggleFiltro('estado')">
                         <i class="fas fa-circle"></i> Estado
                         <span class="filtro-count" id="estadoCount"></span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="checkbox-group" id="filtroEstadoContainer">
-                        <label><input type="checkbox" value="pendiente"> Pendiente <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="en_revision"> En revisión <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="en_proceso"> En proceso <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="vencido"> Vencido <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="resuelto"> Resuelto <span class="check-count"></span></label>
-                        <label><input type="checkbox" value="cerrado"> Cerrado <span class="check-count"></span></label>
+                    <div class="accordion-content" id="filtroEstado">
+                        <div class="checkbox-group" id="filtroEstadoContainer">
+                            <label><input type="checkbox" value="pendiente"> Pendiente <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="en_revision"> En revisión <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="en_proceso"> En proceso <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="vencido"> Vencido <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="resuelto"> Resuelto <span class="check-count"></span></label>
+                            <label><input type="checkbox" value="cerrado"> Cerrado <span class="check-count"></span></label>
+                        </div>
                     </div>
                 </div>
 

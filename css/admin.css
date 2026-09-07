@@ -137,7 +137,7 @@ body {
 }
 
 .filtros-sidebar .filtro-seccion {
-    margin-bottom: 14px;
+    margin-bottom: 6px;
 }
 
 .filtros-sidebar .filtro-seccion:last-child {
@@ -154,6 +154,9 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
+    padding: 4px 0;
+    user-select: none;
 }
 
 .filtros-sidebar .filtro-titulo i {
@@ -170,34 +173,41 @@ body {
     margin-left: auto;
 }
 
+.filtros-sidebar .filtro-titulo .accordion-icon {
+    font-size: 0.65rem;
+    transition: transform 0.3s ease;
+    margin-left: 4px;
+}
+
+.filtros-sidebar .filtro-titulo .accordion-icon.open {
+    transform: rotate(180deg);
+}
+
 .filtros-sidebar .filtro-divider {
     border: none;
     border-top: 1px solid var(--border-light);
-    margin: 10px 0;
+    margin: 8px 0;
+}
+
+/* Accordion content */
+.accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding-top: 0;
+}
+
+.accordion-content.open {
+    max-height: 600px;
+    padding-top: 6px;
 }
 
 /* Checkbox group */
 .checkbox-group {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    max-height: 200px;
-    overflow-y: auto;
+    gap: 2px;
     padding-right: 4px;
-}
-
-.checkbox-group::-webkit-scrollbar {
-    width: 4px;
-}
-
-.checkbox-group::-webkit-scrollbar-track {
-    background: var(--border-light);
-    border-radius: 4px;
-}
-
-.checkbox-group::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 4px;
 }
 
 .checkbox-group label {
@@ -207,7 +217,7 @@ body {
     font-size: 0.82rem;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 3px 6px;
+    padding: 2px 6px;
     border-radius: 4px;
     transition: var(--transition);
 }

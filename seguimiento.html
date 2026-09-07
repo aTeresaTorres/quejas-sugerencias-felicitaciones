@@ -10,7 +10,7 @@
 <body>
     <div class="seguimiento-container">
         <header>
-            <h1>Seguimiento de Ticket</h1>
+            <h1><i class="fas fa-clipboard-list"></i> Seguimiento de Ticket</h1>
             <div class="header-actions">
                 <span id="userEmail"></span>
                 <button onclick="window.location.href='admin.html'" class="btn-volver">
@@ -36,13 +36,13 @@
             </div>
         </section>
 
-        <!-- PASO 4: Clasificar y asignar -->
-        <section class="paso" id="paso4">
-            <h3><span class="paso-numero">4</span> Clasificar y asignar</h3>
-            <div id="formPaso4">
+        <!-- PASO 1: Clasificar y asignar -->
+        <section class="paso" id="paso1">
+            <h3><span class="paso-numero">1</span> Clasificar y asignar</h3>
+            <div id="formPaso1">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Asunto *</label>
+                        <label>Asunto <span class="required">*</span></label>
                         <select id="asuntoTicket">
                             <option value="queja">Queja</option>
                             <option value="sugerencia">Sugerencia</option>
@@ -52,15 +52,9 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Dependencia *</label>
+                        <label>Dependencia <span class="required">*</span></label>
                         <select id="dependenciaTicket">
-                            <option value="sistemas">Sistemas</option>
-                            <option value="recursos_humanos">Recursos Humanos</option>
-                            <option value="finanzas">Finanzas</option>
-                            <option value="operaciones">Operaciones</option>
-                            <option value="atencion_cliente">Atención al Cliente</option>
-                            <option value="juridico">Jurídico</option>
-                            <option value="compras">Compras</option>
+                            <!-- Se llenará dinámicamente desde Firestore -->
                         </select>
                     </div>
                 </div>
@@ -68,29 +62,29 @@
                     <i class="fas fa-save"></i> Actualizar datos
                 </button>
             </div>
-            <div id="paso4Registrado" style="display: none;">
+            <div id="paso1Registrado" style="display: none;">
                 <div class="registro-exitoso">
                     <h4><i class="fas fa-check-circle"></i> Datos actualizados</h4>
-                    <div id="paso4Data"></div>
+                    <div id="paso1Data"></div>
                 </div>
             </div>
         </section>
 
-        <!-- PASO 5: Envío a dependencia -->
-        <section class="paso" id="paso5" style="display: none;">
-            <h3><span class="paso-numero">5</span> Envío a dependencia</h3>
+        <!-- PASO 2: Envío a dependencia -->
+        <section class="paso" id="paso2" style="display: none;">
+            <h3><span class="paso-numero">2</span> Envío a dependencia</h3>
             <div id="formEnvioDependencia">
                 <div class="form-row">
                     <div class="form-group full-width">
-                        <label>Descripción de la acción *</label>
+                        <label>Descripción de la acción <span class="required">*</span></label>
                         <textarea id="descripcionEnvio" rows="4" placeholder="Describe qué se envió a la dependencia..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Oficio/Número de seguimiento *</label>
+                        <label>Oficio/Número de seguimiento <span class="required">*</span></label>
                         <input type="text" id="oficioEnvio" placeholder="Ej: OF-2026-001">
                     </div>
                     <div class="form-group">
-                        <label>Fecha de elaboración *</label>
+                        <label>Fecha de elaboración <span class="required">*</span></label>
                         <input type="date" id="fechaElaboracion">
                     </div>
                     <div class="form-group">
@@ -126,9 +120,9 @@
             </div>
         </section>
 
-        <!-- PASO 6: Envíos adicionales -->
-        <section class="paso" id="paso6" style="display: none;">
-            <h3><span class="paso-numero">6</span> Envíos adicionales a dependencia</h3>
+        <!-- PASO 3: Envíos adicionales -->
+        <section class="paso" id="paso3" style="display: none;">
+            <h3><span class="paso-numero">3</span> Envíos adicionales a dependencia</h3>
             <div id="enviosAdicionalesContainer">
                 <p style="color: #7a8a9a;">No hay envíos adicionales</p>
             </div>
@@ -137,21 +131,21 @@
             </button>
         </section>
 
-        <!-- PASO 7: Respuesta de la dependencia -->
-        <section class="paso" id="paso7" style="display: none;">
-            <h3><span class="paso-numero">7</span> Respuesta de la dependencia</h3>
+        <!-- PASO 4: Respuesta de la dependencia -->
+        <section class="paso" id="paso4" style="display: none;">
+            <h3><span class="paso-numero">4</span> Respuesta de la dependencia</h3>
             <div id="formRespuestaDependencia">
                 <div class="form-row">
                     <div class="form-group full-width">
-                        <label>Descripción de la respuesta *</label>
+                        <label>Descripción de la respuesta <span class="required">*</span></label>
                         <textarea id="descripcionRespuestaDep" rows="4" placeholder="¿Qué respondió la dependencia?"></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Oficio de respuesta *</label>
+                        <label>Oficio de respuesta <span class="required">*</span></label>
                         <input type="text" id="oficioRespuestaDep" placeholder="Ej: RES-2026-001">
                     </div>
                     <div class="form-group">
-                        <label>Fecha de respuesta *</label>
+                        <label>Fecha de respuesta <span class="required">*</span></label>
                         <input type="date" id="fechaRespuestaDep">
                     </div>
                 </div>
@@ -167,17 +161,17 @@
             </div>
         </section>
 
-        <!-- PASO 8: Respuesta al ciudadano -->
-        <section class="paso" id="paso8" style="display: none;">
-            <h3><span class="paso-numero">8</span> Respuesta al ciudadano</h3>
+        <!-- PASO 5: Respuesta al ciudadano -->
+        <section class="paso" id="paso5" style="display: none;">
+            <h3><span class="paso-numero">5</span> Respuesta al ciudadano</h3>
             <div id="formRespuestaCiudadano">
                 <div class="form-row">
                     <div class="form-group full-width">
-                        <label>Descripción de la respuesta al ciudadano *</label>
+                        <label>Descripción de la respuesta al ciudadano <span class="required">*</span></label>
                         <textarea id="descripcionRespuestaCiudadano" rows="4" placeholder="Escribe la respuesta que se dará al ciudadano..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Fecha de respuesta *</label>
+                        <label>Fecha de respuesta <span class="required">*</span></label>
                         <input type="date" id="fechaRespuestaCiudadano">
                     </div>
                 </div>
@@ -193,9 +187,9 @@
             </div>
         </section>
 
-        <!-- PASO 9: Generar reporte -->
-        <section class="paso" id="paso9" style="display: none;">
-            <h3><span class="paso-numero">9</span> Generar reporte final</h3>
+        <!-- PASO 6: Generar reporte -->
+        <section class="paso" id="paso6" style="display: none;">
+            <h3><span class="paso-numero">6</span> Generar reporte final</h3>
             <p style="color: #4a5a6a; margin-bottom: 15px;">
                 <i class="fas fa-info-circle"></i> Genera el reporte completo de todo el proceso del ticket. 
                 Esto marcará el ticket como <strong>RESUELTO</strong>.

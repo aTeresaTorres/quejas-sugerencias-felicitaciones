@@ -2,6 +2,7 @@
 let ticketId = null;
 let ticketData = null;
 let diasHabilesTranscurridos = 0;
+let dependenciasList = [];
 
 // ============ OBTENER ID DEL TICKET ============
 const urlParams = new URLSearchParams(window.location.search);
@@ -12,11 +13,73 @@ if (!ticketId) {
     window.location.href = 'admin.html';
 }
 
+// ============ CARGAR DEPENDENCIAS DESDE FIRESTORE ============
+async function cargarDependencias() {
+    try {
+        const snapshot = await db.collection('dependencias').orderBy('nombre').get();
+        dependenciasList = [];
+        snapshot.forEach(doc => {
+            dependenciasList.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Si no hay dependencias, crear las predeterminadas
+        if (dependenciasList.length === 0) {
+            await crearDependenciasPredeterminadas();
+            return cargarDependencias();
+        }
+        
+        llenarSelectDependencias();
+    } catch (error) {
+        console.error('Error al cargar dependencias:', error);
+        // Fallback: usar lista en código
+        dependenciasList = [
+            { id: 'sistemas', nombre: 'Sistemas' },
+            { id: 'recursos_humanos', nombre: 'Recursos Humanos' },
+            { id: 'finanzas', nombre: 'Finanzas' },
+            { id: 'operaciones', nombre: 'Operaciones' },
+            { id: 'atencion_cliente', nombre: 'Atención al Cliente' },
+            { id: 'juridico', nombre: 'Jurídico' },
+            { id: 'compras', nombre: 'Compras' }
+        ];
+        llenarSelectDependencias();
+    }
+}
+
+async function crearDependenciasPredeterminadas() {
+    const defaults = [
+        { nombre: 'Sistemas', activo: true },
+        { nombre: 'Recursos Humanos', activo: true },
+        { nombre: 'Finanzas', activo: true },
+        { nombre: 'Operaciones', activo: true },
+        { nombre: 'Atención al Cliente', activo: true },
+        { nombre: 'Jurídico', activo: true },
+        { nombre: 'Compras', activo: true }
+    ];
+    
+    const batch = db.batch();
+    defaults.forEach(dep => {
+        const ref = db.collection('dependencias').doc();
+        batch.set(ref, dep);
+    });
+    await batch.commit();
+}
+
+function llenarSelectDependencias() {
+    const select = document.getElementById('dependenciaTicket');
+    select.innerHTML = '';
+    dependenciasList.forEach(dep => {
+        const option = document.createElement('option');
+        option.value = dep.id;
+        option.textContent = dep.nombre;
+        select.appendChild(option);
+    });
+}
+
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('userEmail').textContent = '👤 ' + user.email;
-        cargarTicket();
+        cargarDependencias().then(() => cargarTicket());
     } else {
         window.location.href = 'login.html';
     }
@@ -164,27 +227,26 @@ function puedeAvanzar(pasoRequerido) {
     const paso = pasoRequerido || 0;
 
     switch (paso) {
-        case 5:
+        case 2:
             if (ticketData.asunto === 'pendiente_clasificar' || !ticketData.dependencia || ticketData.dependencia === 'sin_asignar') {
-                alert('Primero debes clasificar el asunto y asignar dependencia (Paso 4)');
+                alert('Primero debes clasificar el asunto y asignar dependencia (Paso 1)');
                 return false;
             }
             break;
-        case 6:
+        case 3:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
-                alert('Primero debes registrar el envío a dependencia (Paso 5)');
+                alert('Primero debes registrar el envío a dependencia (Paso 2)');
                 return false;
             }
-            // Si ya hay respuesta de dependencia, no permitir más envíos adicionales
             const respuestasDep = ticketData.respuestasDependencia || [];
             if (respuestasDep.length > 0) {
                 alert('Ya se registró la respuesta de la dependencia. No se pueden agregar más envíos adicionales.');
                 return false;
             }
             break;
-        case 7:
+        case 4:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
-                alert('Primero debes registrar el envío a dependencia (Paso 5)');
+                alert('Primero debes registrar el envío a dependencia (Paso 2)');
                 return false;
             }
             const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
@@ -193,15 +255,15 @@ function puedeAvanzar(pasoRequerido) {
                 return false;
             }
             break;
-        case 8:
+        case 5:
             if (!ticketData.respuestasDependencia || ticketData.respuestasDependencia.length === 0) {
-                alert('Primero debes registrar la respuesta de la dependencia (Paso 7)');
+                alert('Primero debes registrar la respuesta de la dependencia (Paso 4)');
                 return false;
             }
             break;
-        case 9:
+        case 6:
             if (!ticketData.respuestasCiudadano || ticketData.respuestasCiudadano.length === 0) {
-                alert('Primero debes registrar la respuesta al ciudadano (Paso 8)');
+                alert('Primero debes registrar la respuesta al ciudadano (Paso 5)');
                 return false;
             }
             break;
@@ -235,7 +297,17 @@ function mostrarTicket() {
     estadoEl.className = 'estado ' + t.estado;
 
     document.getElementById('asuntoTicket').value = t.asunto || 'pendiente_clasificar';
-    document.getElementById('dependenciaTicket').value = t.dependencia || 'sistemas';
+    
+    // Seleccionar la dependencia correcta
+    if (t.dependencia) {
+        const select = document.getElementById('dependenciaTicket');
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === t.dependencia) {
+                select.selectedIndex = i;
+                break;
+            }
+        }
+    }
 
     if (t.asunto === 'no_procede') {
         document.getElementById('dependenciaTicket').disabled = true;
@@ -245,7 +317,7 @@ function mostrarTicket() {
         document.getElementById('dependenciaTicket').disabled = false;
     }
 
-    mostrarPaso4();
+    mostrarPaso1();
     mostrarEnvioDependencia();
     mostrarRespuestaDependencia();
     mostrarRespuestaCiudadano();
@@ -256,7 +328,7 @@ function mostrarTicket() {
 
 // ============ OCULTAR/MOSTRAR PASOS ============
 function ocultarPasos(ocultar) {
-    const pasos = ['paso5', 'paso6', 'paso7', 'paso8', 'paso9', 'contadorDias'];
+    const pasos = ['paso2', 'paso3', 'paso4', 'paso5', 'paso6', 'contadorDias'];
     pasos.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -272,14 +344,14 @@ function mostrarPaso(id) {
     }
 }
 
-// ============ PASO 4: MOSTRAR ============
-function mostrarPaso4() {
+// ============ PASO 1: MOSTRAR ============
+function mostrarPaso1() {
     const t = ticketData;
     const tieneDatos = t.asunto && t.asunto !== 'pendiente_clasificar' && t.dependencia && t.dependencia !== 'sin_asignar';
 
     if (tieneDatos) {
-        document.getElementById('formPaso4').style.display = 'none';
-        document.getElementById('paso4Registrado').style.display = 'block';
+        document.getElementById('formPaso1').style.display = 'none';
+        document.getElementById('paso1Registrado').style.display = 'block';
 
         const asuntoLabel = {
             'queja': 'Queja',
@@ -289,22 +361,24 @@ function mostrarPaso4() {
             'no_procede': 'No procede'
         }[t.asunto] || t.asunto;
 
-        document.getElementById('paso4Data').innerHTML = `
+        const depNombre = dependenciasList.find(d => d.id === t.dependencia)?.nombre || t.dependencia || 'Sin asignar';
+
+        document.getElementById('paso1Data').innerHTML = `
             <p><strong>Asunto:</strong> ${asuntoLabel}</p>
-            <p><strong>Dependencia:</strong> ${t.dependencia || 'Sin asignar'}</p>
+            <p><strong>Dependencia:</strong> ${depNombre}</p>
             <p><strong>Estado:</strong> ${t.estado}</p>
         `;
 
         if (t.asunto !== 'no_procede') {
-            mostrarPaso('paso5');
+            mostrarPaso('paso2');
         }
     } else {
         ocultarPasos(true);
-        document.getElementById('paso5').style.display = 'none';
+        document.getElementById('paso2').style.display = 'none';
     }
 }
 
-// ============ PASO 4: ACTUALIZAR ============
+// ============ PASO 1: ACTUALIZAR ============
 async function actualizarDatosTicket() {
     const btn = event.target;
     const textoOriginal = mostrarLoading(btn);
@@ -341,7 +415,8 @@ async function actualizarDatosTicket() {
             fechaActualizacion: new Date().toISOString()
         });
 
-        await agregarHistorial('Actualización de datos', 'Asunto: ' + asunto + ', Dependencia: ' + dependencia);
+        const depNombre = dependenciasList.find(d => d.id === dependencia)?.nombre || dependencia;
+        await agregarHistorial('Actualización de datos', 'Asunto: ' + asunto + ', Dependencia: ' + depNombre);
 
         ocultarLoading(btn, textoOriginal);
         cargarTicket();
@@ -353,7 +428,7 @@ async function actualizarDatosTicket() {
     }
 }
 
-// ============ PASO 5: MOSTRAR ENVÍO ============
+// ============ PASO 2: MOSTRAR ENVÍO ============
 function mostrarEnvioDependencia() {
     const envioPrincipal = obtenerEnvioPrincipal();
 
@@ -402,12 +477,12 @@ function mostrarEnvioDependencia() {
     }
 
     if (envioPrincipal.fechaRecibido) {
-        mostrarPaso('paso7');
+        mostrarPaso('paso4');
         mostrarPaso('contadorDias');
     }
 }
 
-// ============ PASO 5: ACTUALIZAR FECHA DE RECIBIDO ============
+// ============ PASO 2: ACTUALIZAR FECHA DE RECIBIDO ============
 function editarFechaRecibido() {
     const envioPrincipal = obtenerEnvioPrincipal();
     if (!envioPrincipal) {
@@ -430,7 +505,7 @@ function editarFechaRecibido() {
         <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
             <h3 style="margin-bottom: 20px; color: #1a3a5c;">Actualizar fecha de recibido</h3>
             <div class="form-group">
-                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido *</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido <span class="required">*</span></label>
                 <input type="date" id="nuevaFechaRecibido" 
                        min="${fechaElaboracion}" max="${hoy}"
                        style="width: 100%; padding: 10px; border: 2px solid #d0d8e0; border-radius: 6px; font-size: 16px;">
@@ -505,9 +580,9 @@ async function actualizarFechaRecibido(nuevaFecha) {
     }
 }
 
-// ============ PASO 5: REGISTRAR ENVÍO ============
+// ============ PASO 2: REGISTRAR ENVÍO ============
 async function registrarEnvioDependencia() {
-    if (!puedeAvanzar(5)) return;
+    if (!puedeAvanzar(2)) return;
 
     const btn = event.target;
     const textoOriginal = mostrarLoading(btn);
@@ -597,9 +672,9 @@ async function registrarEnvioDependencia() {
     }
 }
 
-// ============ PASO 6: ENVÍOS ADICIONALES ============
+// ============ PASO 3: ENVÍOS ADICIONALES ============
 function agregarEnvioAdicional() {
-    if (!puedeAvanzar(6)) return;
+    if (!puedeAvanzar(3)) return;
 
     const container = document.getElementById('enviosAdicionalesContainer');
     const hoy = fechaHoy();
@@ -633,15 +708,15 @@ function agregarEnvioAdicional() {
             <h4>Envío adicional #${container.querySelectorAll('.envio-adicional').length + 1}</h4>
             <div class="form-row">
                 <div class="form-group full-width">
-                    <label>Descripción *</label>
+                    <label>Descripción <span class="required">*</span></label>
                     <textarea class="desc-adicional" rows="4" placeholder="Describe el envío..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Oficio *</label>
+                    <label>Oficio <span class="required">*</span></label>
                     <input class="oficio-adicional" type="text" placeholder="Ej: OF-2026-002">
                 </div>
                 <div class="form-group">
-                    <label>Fecha elaboración *</label>
+                    <label>Fecha elaboración <span class="required">*</span></label>
                     <input class="fecha-elaboracion-adicional" type="date" min="${fechaMinimaAdicional}" max="${hoy}">
                     <small>Mínimo: ${formatearFecha(fechaMinimaAdicional)} (10 días hábiles después del recibido)</small>
                 </div>
@@ -729,7 +804,7 @@ async function registrarEnvioAdicional(btn) {
         }
     }
 
-    if (!puedeAvanzar(6)) {
+    if (!puedeAvanzar(3)) {
         ocultarLoading(btn, textoOriginal);
         return;
     }
@@ -752,7 +827,7 @@ async function registrarEnvioAdicional(btn) {
         const enviosActuales = data.enviosDependencia || [];
 
         if (enviosActuales.length === 0) {
-            alert('No existe un envío principal (Paso 5) registrado todavía.');
+            alert('No existe un envío principal (Paso 2) registrado todavía.');
             ocultarLoading(btn, textoOriginal);
             return;
         }
@@ -781,15 +856,14 @@ function cargarEnviosAdicionales() {
     const container = document.getElementById('enviosAdicionalesContainer');
     const adicionales = obtenerEnviosAdicionales();
 
-    const paso6 = document.getElementById('paso6');
+    const paso3Div = document.getElementById('paso3');
     const btnAgregar = document.getElementById('btnAgregarEnvioAdicional');
 
-    // Verificar si ya hay respuesta de dependencia para ocultar el botón
     const respuestasDep = ticketData.respuestasDependencia || [];
     const tieneRespuestaDep = respuestasDep.length > 0;
 
     if (tieneRespuestaDep) {
-        paso6.style.display = 'none';
+        paso3Div.style.display = 'none';
         return;
     }
 
@@ -849,7 +923,7 @@ function editarFechaRecibidoAdicional(index) {
         <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
             <h3 style="margin-bottom: 20px; color: #1a3a5c;">Actualizar fecha de recibido</h3>
             <div class="form-group">
-                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido *</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido <span class="required">*</span></label>
                 <input type="date" id="nuevaFechaRecibidoAdicional" 
                        min="${fechaElaboracion}" max="${hoy}"
                        style="width: 100%; padding: 10px; border: 2px solid #d0d8e0; border-radius: 6px; font-size: 16px;">
@@ -926,23 +1000,21 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
     }
 }
 
-// ============ PASO 7: RESPUESTA DE DEPENDENCIA ============
+// ============ PASO 4: RESPUESTA DE DEPENDENCIA ============
 function mostrarRespuestaDependencia() {
     const respuestas = ticketData.respuestasDependencia || [];
     const tieneRespuestaDep = respuestas.length > 0;
 
-    // Si ya hay respuesta de dependencia, OCULTAR el botón de "Agregar otro envío"
-    const paso6Div = document.getElementById('paso6');
+    const paso3Div = document.getElementById('paso3');
     const btnAgregar = document.getElementById('btnAgregarEnvioAdicional');
 
     if (tieneRespuestaDep) {
-        if (paso6Div) paso6Div.style.display = 'none';
+        if (paso3Div) paso3Div.style.display = 'none';
         if (btnAgregar) btnAgregar.style.display = 'none';
     } else {
-        // Si no hay respuesta, mostrar el paso 6 (si hay envíos adicionales o no)
         const enviosAdicionales = obtenerEnviosAdicionales();
-        if (paso6Div) {
-            paso6Div.style.display = 'block';
+        if (paso3Div) {
+            paso3Div.style.display = 'block';
         }
         if (btnAgregar) {
             btnAgregar.style.display = 'inline-block';
@@ -980,12 +1052,12 @@ function mostrarRespuestaDependencia() {
     `;
 
     if (ticketData.asunto !== 'no_procede') {
-        mostrarPaso('paso8');
+        mostrarPaso('paso5');
     }
 }
 
 async function registrarRespuestaDependencia() {
-    if (!puedeAvanzar(7)) return;
+    if (!puedeAvanzar(4)) return;
 
     const btn = event.target;
     const textoOriginal = mostrarLoading(btn);
@@ -1050,7 +1122,7 @@ async function registrarRespuestaDependencia() {
     }
 }
 
-// ============ PASO 8: RESPUESTA AL CIUDADANO ============
+// ============ PASO 5: RESPUESTA AL CIUDADANO ============
 function mostrarRespuestaCiudadano() {
     const respuestas = ticketData.respuestasCiudadano || [];
     if (respuestas.length === 0) {
@@ -1084,12 +1156,12 @@ function mostrarRespuestaCiudadano() {
     `;
 
     if (ticketData.asunto !== 'no_procede') {
-        mostrarPaso('paso9');
+        mostrarPaso('paso6');
     }
 }
 
 async function registrarRespuestaCiudadano() {
-    if (!puedeAvanzar(8)) return;
+    if (!puedeAvanzar(5)) return;
 
     const btn = event.target;
     const textoOriginal = mostrarLoading(btn);
@@ -1151,11 +1223,11 @@ async function registrarRespuestaCiudadano() {
     }
 }
 
-// ============ PASO 9: GENERAR REPORTE ============
+// ============ PASO 6: GENERAR REPORTE ============
 async function generarReporte() {
     const respuestasCiudadano = ticketData.respuestasCiudadano || [];
     if (respuestasCiudadano.length === 0) {
-        alert('Primero debes registrar la respuesta al ciudadano (Paso 8)');
+        alert('Primero debes registrar la respuesta al ciudadano (Paso 5)');
         return;
     }
 
@@ -1257,13 +1329,15 @@ function generarPDFReporte() {
                 diasHabilesLabel = dias !== null ? dias + ' días hábiles (en proceso)' : 'No disponible';
             }
 
+            const depNombre = dependenciasList.find(d => d.id === t.dependencia)?.nombre || t.dependencia || 'Sin asignar';
+
             const datos = [
                 ['Folio:', t.folio],
                 ['Nombre:', t.nombre],
                 ['Correo:', t.email || 'No proporcionado'],
                 ['Teléfono:', t.telefono || 'No proporcionado'],
                 ['Asunto:', t.asunto || 'Sin clasificar'],
-                ['Dependencia:', t.dependencia || 'Sin asignar'],
+                ['Dependencia:', depNombre],
                 ['Estado:', 'RESUELTO'],
                 ['Fecha creación:', formatearFechaHora(t.fechaCreacion)],
                 ['Fecha resolución:', t.fechaResolucion ? formatearFechaHora(t.fechaResolucion) : new Date().toLocaleString('es-MX')],
@@ -1471,12 +1545,12 @@ function generarPDFReporte() {
 function actualizarContadorDias() {
     const contadorDiv = document.getElementById('diasContador');
     const alertaDiv = document.getElementById('alertasVencimiento');
-    const paso6Div = document.getElementById('paso6');
+    const paso3Div = document.getElementById('paso3');
 
     if (ticketData.asunto === 'no_procede' || ticketData.estado === 'cerrado' || ticketData.estado === 'resuelto') {
         contadorDiv.innerHTML = '<p style="color: #7a8a9a;">Ticket cerrado o resuelto</p>';
         alertaDiv.style.display = 'none';
-        if (paso6Div) paso6Div.style.display = 'none';
+        if (paso3Div) paso3Div.style.display = 'none';
         return;
     }
 
@@ -1490,7 +1564,7 @@ function actualizarContadorDias() {
             </div>
         `;
         alertaDiv.style.display = 'none';
-        if (paso6Div) paso6Div.style.display = 'none';
+        if (paso3Div) paso3Div.style.display = 'none';
         return;
     }
 
@@ -1513,7 +1587,7 @@ function actualizarContadorDias() {
         document.getElementById('mensajeVencimiento').textContent =
             'Este ticket tiene ' + diasHabiles + ' días hábiles sin respuesta. Se recomienda enviar un nuevo oficio.';
 
-        if (paso6Div) paso6Div.style.display = 'block';
+        if (paso3Div) paso3Div.style.display = 'block';
 
         if (ticketData.estado !== 'vencido' && ticketData.estado !== 'resuelto' && ticketData.estado !== 'cerrado') {
             db.collection('tickets').doc(ticketId).update({
@@ -1525,21 +1599,20 @@ function actualizarContadorDias() {
         }
     } else {
         alertaDiv.style.display = 'none';
-        // Solo ocultar paso6 si no hay respuesta de dependencia
         const respuestasDep = ticketData.respuestasDependencia || [];
-        if (respuestasDep.length === 0 && paso6Div) {
-            paso6Div.style.display = 'none';
+        if (respuestasDep.length === 0 && paso3Div) {
+            paso3Div.style.display = 'none';
         }
     }
 }
 
-// ============ HISTORIAL ============
+// ============ HISTORIAL (CORREGIDO) ============
 async function agregarHistorial(accion, descripcion) {
     try {
         const historialEntry = {
             fecha: new Date().toISOString(),
             accion: accion,
-            descripcion: descripcion,
+            descripcion: descripcion || '',
             usuario: auth.currentUser.email
         };
 
@@ -1568,15 +1641,16 @@ function cargarHistorial() {
         return;
     }
 
+    // Mostrar en el mismo formato que admin.js
     let html = '';
     historial.forEach(h => {
         const fecha = new Date(h.fecha);
         html += `
             <div class="historial-item">
-                <p><strong>📌 ${h.accion}</strong></p>
-                <p>📅 <strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
-                <p>👤 <strong>Por:</strong> ${h.usuario || 'N/A'}</p>
-                ${h.descripcion ? `<p>📝 ${h.descripcion}</p>` : ''}
+                <p><strong><i class="fas fa-tag"></i> ${h.accion}</strong></p>
+                <p><i class="fas fa-clock"></i> <strong>Fecha de registro:</strong> ${formatearFechaHora(fecha)}</p>
+                <p><i class="fas fa-user"></i> <strong>Por:</strong> ${h.usuario || 'N/A'}</p>
+                ${h.descripcion ? `<p><i class="fas fa-info-circle"></i> ${h.descripcion}</p>` : ''}
             </div>
         `;
     });

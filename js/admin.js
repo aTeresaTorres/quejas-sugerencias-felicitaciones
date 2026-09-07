@@ -4,16 +4,86 @@ let ticketActual = null;
 let filtrosActuales = {};
 let ticketsNuevos = new Set();
 let todosLosTickets = [];
+let dependenciasList = [];
 
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('userEmailText').textContent = user.email;
-        cargarTodosLosTickets();
+        cargarDependencias().then(() => cargarTodosLosTickets());
     } else {
         window.location.href = 'login.html';
     }
 });
+
+// ============ CARGAR DEPENDENCIAS DESDE FIRESTORE ============
+async function cargarDependencias() {
+    try {
+        const snapshot = await db.collection('dependencias').orderBy('nombre').get();
+        dependenciasList = [];
+        snapshot.forEach(doc => {
+            dependenciasList.push({ id: doc.id, ...doc.data() });
+        });
+        
+        if (dependenciasList.length === 0) {
+            await crearDependenciasPredeterminadas();
+            return cargarDependencias();
+        }
+        
+        actualizarFiltrosDependencias();
+    } catch (error) {
+        console.error('Error al cargar dependencias:', error);
+        dependenciasList = [
+            { id: 'sistemas', nombre: 'Sistemas' },
+            { id: 'recursos_humanos', nombre: 'Recursos Humanos' },
+            { id: 'finanzas', nombre: 'Finanzas' },
+            { id: 'operaciones', nombre: 'Operaciones' },
+            { id: 'atencion_cliente', nombre: 'Atención al Cliente' },
+            { id: 'juridico', nombre: 'Jurídico' },
+            { id: 'compras', nombre: 'Compras' }
+        ];
+        actualizarFiltrosDependencias();
+    }
+}
+
+async function crearDependenciasPredeterminadas() {
+    const defaults = [
+        { nombre: 'Sistemas', activo: true },
+        { nombre: 'Recursos Humanos', activo: true },
+        { nombre: 'Finanzas', activo: true },
+        { nombre: 'Operaciones', activo: true },
+        { nombre: 'Atención al Cliente', activo: true },
+        { nombre: 'Jurídico', activo: true },
+        { nombre: 'Compras', activo: true }
+    ];
+    
+    const batch = db.batch();
+    defaults.forEach(dep => {
+        const ref = db.collection('dependencias').doc();
+        batch.set(ref, dep);
+    });
+    await batch.commit();
+}
+
+function actualizarFiltrosDependencias() {
+    const container = document.getElementById('filtroDependenciaContainer');
+    container.innerHTML = '';
+    
+    dependenciasList.forEach(dep => {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = dep.id;
+        const span = document.createElement('span');
+        span.className = 'check-count';
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + dep.nombre + ' '));
+        label.appendChild(span);
+        container.appendChild(label);
+        
+        cb.addEventListener('change', aplicarFiltrosYBusqueda);
+    });
+}
 
 // ============ CERRAR SESIÓN ============
 document.getElementById('btnLogout').addEventListener('click', () => {
@@ -47,6 +117,18 @@ document.getElementById('btnLimpiarBusqueda').addEventListener('click', () => {
     aplicarFiltrosYBusqueda();
 });
 
+// ============ TOGGLE PARA ACORDEÓN ============
+function toggleFiltro(id) {
+    const content = document.getElementById('filtro' + id.charAt(0).toUpperCase() + id.slice(1));
+    const icon = content?.previousElementSibling?.querySelector('.accordion-icon');
+    if (content) {
+        content.classList.toggle('open');
+        if (icon) {
+            icon.classList.toggle('open');
+        }
+    }
+}
+
 // ============ FILTROS DE FECHA DINÁMICOS ============
 document.getElementById('tipoFiltroFecha').addEventListener('change', function() {
     const container = document.getElementById('filtroFechaContainer');
@@ -78,7 +160,6 @@ document.getElementById('tipoFiltroFecha').addEventListener('change', function()
 
     container.innerHTML = html;
     
-    // Agregar eventos a los nuevos inputs de fecha
     if (tipo !== 'ninguno') {
         const inputs = container.querySelectorAll('input');
         inputs.forEach(input => {
@@ -103,10 +184,8 @@ function generarOpcionesAnios() {
 
 // ============ EVENTOS EN TIEMPO REAL PARA CHECKBOX ============
 document.addEventListener('DOMContentLoaded', function() {
-    // Todos los checkbox de filtros
     document.querySelectorAll('.checkbox-group input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', function() {
-            // Si se marca "Cualquier acción", desmarcar los demás
             if (this.value === 'cualquier' && this.checked) {
                 document.querySelectorAll('#filtroTipoAccionContainer input[type="checkbox"]').forEach(c => {
                     if (c.value !== 'cualquier') c.checked = false;
@@ -116,7 +195,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (cualquier) cualquier.checked = false;
             }
             
-            // Si no hay nada seleccionado en acciones, marcar "cualquier"
             const acciones = document.querySelectorAll('#filtroTipoAccionContainer input[type="checkbox"]:checked');
             if (acciones.length === 0) {
                 const cualquier = document.querySelector('#filtroTipoAccionContainer input[value="cualquier"]');
@@ -259,10 +337,7 @@ async function cargarTodosLosTickets() {
             todosLosTickets.push({ id: doc.id, ...doc.data() });
         });
 
-        // Actualizar conteos en los checkbox
         actualizarConteosCheckbox(todosLosTickets);
-
-        // Aplicar filtros y mostrar
         aplicarFiltrosYBusqueda();
 
     } catch (error) {
@@ -301,17 +376,8 @@ function actualizarConteosCheckbox(ticketsData) {
         }
     });
 
-    // Dependencias
+    // Dependencias (usando dependenciasList)
     const dependencias = {};
-    const depLabels = {
-        'sistemas': 'Sistemas',
-        'recursos_humanos': 'RRHH',
-        'finanzas': 'Finanzas',
-        'operaciones': 'Operaciones',
-        'atencion_cliente': 'Atención Cliente',
-        'juridico': 'Jurídico',
-        'compras': 'Compras'
-    };
     ticketsData.forEach(t => {
         const dep = t.dependencia || 'sin_asignar';
         dependencias[dep] = (dependencias[dep] || 0) + 1;
@@ -358,7 +424,6 @@ function aplicarFiltrosYBusqueda() {
     const filtros = obtenerFiltrosActuales();
     const ticketsFiltrados = filtrarTickets(todosLosTickets, filtros);
     
-    // Detectar tickets nuevos
     const idsNuevos = new Set();
     ticketsFiltrados.forEach(t => {
         const esPendiente = t.estado === 'pendiente';
@@ -375,7 +440,6 @@ function aplicarFiltrosYBusqueda() {
     
     document.getElementById('contadorTickets').textContent = `(${tickets.length} tickets)`;
     
-    // Actualizar el contador en el título
     const totalCount = document.querySelector('.total-count');
     if (totalCount) {
         totalCount.textContent = `(${tickets.length} de ${todosLosTickets.length})`;
@@ -389,7 +453,6 @@ function obtenerFiltrosActuales() {
         busqueda: document.getElementById('busquedaGlobal').value.trim()
     };
 
-    // Fechas
     const tipoFecha = filtros.tipoFecha;
     switch (tipoFecha) {
         case 'anio':
@@ -409,25 +472,21 @@ function obtenerFiltrosActuales() {
             break;
     }
 
-    // Acciones (checkbox)
     const acciones = getCheckboxValues('filtroTipoAccionContainer');
     if (acciones.length > 0 && !acciones.includes('cualquier')) {
         filtros.acciones = acciones;
     }
 
-    // Asuntos (checkbox)
     const asuntos = getCheckboxValues('filtroAsuntoContainer');
     if (asuntos.length > 0) {
         filtros.asuntos = asuntos;
     }
 
-    // Dependencias (checkbox)
     const dependencias = getCheckboxValues('filtroDependenciaContainer');
     if (dependencias.length > 0) {
         filtros.dependencias = dependencias;
     }
 
-    // Estados (checkbox)
     const estados = getCheckboxValues('filtroEstadoContainer');
     if (estados.length > 0) {
         filtros.estados = estados;
@@ -440,7 +499,6 @@ function obtenerFiltrosActuales() {
 function filtrarTickets(ticketsData, filtros) {
     let resultado = [...ticketsData];
 
-    // Búsqueda global
     if (filtros.busqueda) {
         const termino = filtros.busqueda.toLowerCase();
         resultado = resultado.filter(t => {
@@ -456,7 +514,6 @@ function filtrarTickets(ticketsData, filtros) {
         });
     }
 
-    // Filtros de checkbox
     if (filtros.asuntos && filtros.asuntos.length > 0) {
         resultado = resultado.filter(t => filtros.asuntos.includes(t.asunto));
     }
@@ -469,7 +526,6 @@ function filtrarTickets(ticketsData, filtros) {
         resultado = resultado.filter(t => filtros.dependencias.includes(t.dependencia));
     }
 
-    // Filtros de fecha
     const tipoFecha = filtros.tipoFecha;
     if (tipoFecha !== 'ninguno') {
         const acciones = filtros.acciones || ['cualquier'];
@@ -477,12 +533,10 @@ function filtrarTickets(ticketsData, filtros) {
         resultado = resultado.filter(t => {
             const fechasPorAccion = obtenerFechasPorAccion(t);
             
-            // Si no hay acciones específicas o está "cualquier", filtrar por cualquier fecha
             if (acciones.includes('cualquier') || acciones.length === 0) {
                 return Object.values(fechasPorAccion).some(f => coincideConFiltroFecha(f, tipoFecha, filtros));
             }
             
-            // Filtrar por acciones específicas
             for (const accion of acciones) {
                 const fechaObj = fechasPorAccion[accion];
                 if (fechaObj && coincideConFiltroFecha(fechaObj, tipoFecha, filtros)) {
@@ -614,6 +668,8 @@ function renderTickets(tickets, idsNuevos = new Set()) {
             'otros': 'Otros'
         }[ticket.asunto] || ticket.asunto;
 
+        const depNombre = dependenciasList.find(d => d.id === ticket.dependencia)?.nombre || ticket.dependencia || 'Sin asignar';
+
         let contactoMostrar = ticket.contacto;
         if (ticket.email && ticket.telefono) {
             contactoMostrar = ticket.email + ' / ' + ticket.telefono;
@@ -633,7 +689,7 @@ function renderTickets(tickets, idsNuevos = new Set()) {
                 <td>${ticket.nombre}</td>
                 <td>${contactoMostrar}</td>
                 <td>${asuntoLabel}</td>
-                <td>${ticket.dependencia || 'Sin asignar'}</td>
+                <td>${depNombre}</td>
                 <td><span class="estado ${estadoClass}">${estadoLabel}</span></td>
                 <td>${formatearFecha(fecha)}</td>
                 <td>
@@ -678,6 +734,8 @@ async function verTicket(id) {
         'otros': 'Otros'
     }[ticket.asunto] || ticket.asunto;
 
+    const depNombre = dependenciasList.find(d => d.id === ticket.dependencia)?.nombre || ticket.dependencia || 'Sin asignar';
+
     let contactosHTML = '';
     if (ticket.email && ticket.telefono) {
         contactosHTML = `
@@ -714,6 +772,7 @@ async function verTicket(id) {
                     <p><strong><i class="fas fa-tag"></i> ${h.accion}</strong></p>
                     <p><i class="fas fa-clock"></i> <strong>Fecha de registro:</strong> ${formatearFechaHora(fechaH)}</p>
                     <p><i class="fas fa-user"></i> <strong>Por:</strong> ${h.usuario || 'N/A'}</p>
+                    ${h.descripcion ? `<p><i class="fas fa-info-circle"></i> ${h.descripcion}</p>` : ''}
                 </div>
             `;
         }).join('');
@@ -752,7 +811,7 @@ async function verTicket(id) {
                 <div><i class="fas fa-user"></i> <strong>Nombre:</strong> ${ticket.nombre}</div>
                 ${contactosHTML}
                 <div><i class="fas fa-tag"></i> <strong>Asunto:</strong> <span style="font-weight: bold;">${asuntoLabel}</span></div>
-                <div><i class="fas fa-building"></i> <strong>Dependencia:</strong> ${ticket.dependencia || 'Sin asignar'}</div>
+                <div><i class="fas fa-building"></i> <strong>Dependencia:</strong> ${depNombre}</div>
                 <div><i class="fas fa-circle"></i> <strong>Estado:</strong> <span class="estado ${ticket.estado}">${estadoLabel}</span></div>
                 <div><i class="fas fa-calendar"></i> <strong>Fecha creación:</strong> ${formatearFechaHora(fecha)}</div>
                 <div><i class="fas fa-clock"></i> <strong>Días hábiles transcurridos:</strong> ${diasHabilesLabel}</div>
@@ -795,7 +854,6 @@ function irSeguimiento(id) {
 
 // ============ ACTUALIZAR ESTADÍSTICAS ============
 function actualizarEstadisticas(ticketsFiltrados) {
-    // Estado
     const total = ticketsFiltrados.length;
     const pendientes = ticketsFiltrados.filter(t => t.estado === 'pendiente').length;
     const enRevision = ticketsFiltrados.filter(t => t.estado === 'en_revision').length;
@@ -813,24 +871,14 @@ function actualizarEstadisticas(ticketsFiltrados) {
     // Dependencias
     const dependencias = {};
     ticketsFiltrados.forEach(t => {
-        const dep = t.dependencia || 'Sin asignar';
+        const dep = t.dependencia || 'sin_asignar';
         dependencias[dep] = (dependencias[dep] || 0) + 1;
     });
 
-    const depLabels = {
-        'sistemas': 'Sistemas',
-        'recursos_humanos': 'RRHH',
-        'finanzas': 'Finanzas',
-        'operaciones': 'Operaciones',
-        'atencion_cliente': 'Atención Cliente',
-        'juridico': 'Jurídico',
-        'compras': 'Compras',
-        'Sin asignar': 'Sin asignar'
-    };
-
     let depHTML = '';
     Object.keys(dependencias).forEach(dep => {
-        depHTML += `<span class="stat-mini"><span class="num">${dependencias[dep]}</span> ${depLabels[dep] || dep}</span>`;
+        const depNombre = dependenciasList.find(d => d.id === dep)?.nombre || dep;
+        depHTML += `<span class="stat-mini"><span class="num">${dependencias[dep]}</span> ${depNombre}</span>`;
     });
     document.getElementById('dependenciasStats').innerHTML = depHTML || '<span style="color: var(--text-muted);">Sin datos</span>';
 
@@ -859,17 +907,14 @@ function actualizarEstadisticas(ticketsFiltrados) {
 
 // ============ LIMPIAR FILTROS ============
 document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
-    // Resetear selects de fecha
     document.getElementById('tipoFiltroFecha').value = 'ninguno';
     document.getElementById('filtroFechaContainer').innerHTML = 
         '<p style="color: var(--text-muted); font-size: 0.75rem;">Selecciona un tipo de filtro</p>';
 
-    // Desmarcar todos los checkbox
     document.querySelectorAll('.checkbox-group input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
     });
 
-    // Marcar "Cualquier acción"
     const cualquierCheck = document.querySelector('#filtroTipoAccionContainer input[value="cualquier"]');
     if (cualquierCheck) cualquierCheck.checked = true;
 
@@ -894,9 +939,16 @@ document.addEventListener('keydown', function(event) {
 
 // ============ INICIALIZAR ============
 document.addEventListener('DOMContentLoaded', function() {
-    // Marcar "Cualquier acción" por defecto
     const cualquierCheck = document.querySelector('#filtroTipoAccionContainer input[value="cualquier"]');
     if (cualquierCheck) cualquierCheck.checked = true;
+    
+    // Abrir el primer acordeón por defecto
+    const firstContent = document.querySelector('.accordion-content');
+    if (firstContent) {
+        firstContent.classList.add('open');
+        const icon = firstContent.previousElementSibling?.querySelector('.accordion-icon');
+        if (icon) icon.classList.add('open');
+    }
 });
 
 console.log('✅ admin.js cargado correctamente');

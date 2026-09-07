@@ -81,6 +81,23 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
         const docRef = await db.collection('tickets').add(ticketData);
         console.log('Ticket guardado con ID:', docRef.id);
         
+        // Guardar los datos para el PDF
+        window.datosRecibo = {
+            folio: folio,
+            nombre: nombre,
+            email: email || 'No proporcionado',
+            telefono: telefono || 'No proporcionado',
+            mensaje: mensaje,
+            fecha: new Date().toLocaleString('es-MX', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            })
+        };
+        
         mostrarConfirmacion(ticketData);
         
         this.reset();
@@ -137,7 +154,7 @@ function mostrarConfirmacion(data) {
     const recibo = document.getElementById('recibo');
     recibo.innerHTML = `
         <div class="recibo-card" id="reciboContent">
-            <h3>📋 RECIBO DE REGISTRO</h3>
+            <h3><i class="fas fa-receipt"></i> RECIBO DE REGISTRO</h3>
             <p><strong>Folio:</strong> <span style="color: #007bff; font-size: 1.2em;">${data.folio}</span></p>
             <p><strong>Nombre:</strong> ${data.nombre}</p>
             <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;">
@@ -157,78 +174,218 @@ function mostrarConfirmacion(data) {
 
 // ============ GENERAR PDF (CORREGIDO) ============
 function generarPDF() {
-    const element = document.getElementById('reciboContent');
     const btn = document.querySelector('[onclick="generarPDF()"]');
     const textoOriginal = btn.textContent;
     btn.textContent = '⏳ Generando PDF...';
     btn.disabled = true;
 
-    // ANCHO_RECIBO fijo para que el render sea predecible
-    const ANCHO_RECIBO = 600;
+    try {
+        // Obtener los datos del recibo
+        const data = obtenerDatosRecibo();
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
 
-    // Clonar el elemento para no afectar el DOM visible
-    const clone = element.cloneNode(true);
-    clone.style.width = ANCHO_RECIBO + 'px';
-    clone.style.maxWidth = ANCHO_RECIBO + 'px';
-    clone.style.boxSizing = 'border-box';
-    clone.style.padding = '20px';
-    clone.style.fontSize = '14px';
-    clone.style.fontFamily = 'Arial, sans-serif';
-    clone.style.color = '#333';
-    clone.style.backgroundColor = '#ffffff';
-    clone.style.margin = '0';
-    clone.style.borderRadius = '8px';
-    clone.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 15;
+        let y = margin;
 
-    // Asegurar que todos los elementos tengan estilos inline consistentes
-    clone.querySelectorAll('*').forEach(el => {
-        el.style.fontFamily = 'Arial, sans-serif';
-    });
+        // ========== HEADER ==========
+        doc.setFontSize(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(26, 58, 92);
+        doc.text('RECIBO DE REGISTRO', pageWidth / 2, y, { align: 'center' });
+        y += 10;
 
-    // Contenedor temporal, sacado de pantalla
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '-10000px';
-    wrapper.style.width = ANCHO_RECIBO + 'px';
-    wrapper.style.padding = '20px';
-    wrapper.style.backgroundColor = '#ffffff';
-    wrapper.style.boxSizing = 'content-box';
-    wrapper.appendChild(clone);
+        // Línea decorativa
+        doc.setDrawColor(26, 58, 92);
+        doc.setLineWidth(0.8);
+        doc.line(margin + 20, y, pageWidth - margin - 20, y);
+        y += 10;
 
-    document.body.appendChild(wrapper);
+        // Folio destacado
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Folio:', margin, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 102, 204);
+        doc.text(data.folio, margin + 25, y);
+        y += 10;
 
-    const opt = {
-        margin: 10,
-        filename: `recibo-${new Date().getTime()}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            windowWidth: ANCHO_RECIBO + 40
-        },
-        jsPDF: {
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'portrait'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+        // ========== DATOS DEL SOLICITANTE ==========
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(26, 58, 92);
+        doc.text('DATOS DEL SOLICITANTE', margin, y);
+        y += 8;
 
-    html2pdf().set(opt).from(wrapper).save()
-        .then(() => {
-            if (wrapper.parentNode) document.body.removeChild(wrapper);
-            btn.textContent = textoOriginal;
-            btn.disabled = false;
-        })
-        .catch(err => {
-            console.error('Error al generar PDF:', err);
-            alert('Error al generar el PDF. Por favor, intenta de nuevo.');
-            if (wrapper.parentNode) document.body.removeChild(wrapper);
-            btn.textContent = textoOriginal;
-            btn.disabled = false;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        
+        const datos = [
+            ['Nombre:', data.nombre],
+            ['Correo electrónico:', data.email],
+            ['Teléfono:', data.telefono],
+        ];
+
+        datos.forEach(([label, value]) => {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(label, margin + 3, y);
+            const labelWidth = doc.getTextWidth(label);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(50, 50, 50);
+            doc.text(String(value), margin + labelWidth + 8, y);
+            y += 6;
         });
+
+        y += 4;
+
+        // ========== MENSAJE ==========
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(26, 58, 92);
+        doc.text('MENSAJE', margin, y);
+        y += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        const mensajeLines = doc.splitTextToSize(data.mensaje || 'Sin mensaje', pageWidth - (margin * 2) - 6);
+        
+        // Fondo para el mensaje
+        const alturaMensaje = mensajeLines.length * 5 + 8;
+        if (y + alturaMensaje > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+        
+        doc.setFillColor(241, 241, 241);
+        doc.roundedRect(margin + 2, y - 3, pageWidth - (margin * 2) - 4, alturaMensaje + 4, 3, 3, 'F');
+        
+        doc.setTextColor(50, 50, 50);
+        doc.text(mensajeLines, margin + 6, y + 4);
+        y += alturaMensaje + 8;
+
+        // ========== FECHA ==========
+        if (y + 20 > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Fecha de registro:', margin, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text(data.fecha, margin, y);
+        y += 10;
+
+        // ========== LÍNEA FINAL ==========
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(margin + 10, y, pageWidth - margin - 10, y);
+        y += 8;
+
+        // ========== FOOTER ==========
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Tu asunto será clasificado por nuestro equipo de administración', pageWidth / 2, y, { align: 'center' });
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Sistema de Buzón Ciudadano', pageWidth / 2, y, { align: 'center' });
+
+        // ========== GUARDAR ==========
+        doc.save('recibo-' + data.folio + '-' + new Date().getTime() + '.pdf');
+
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
+
+    } catch (error) {
+        console.error('Error al generar PDF:', error);
+        alert('Error al generar el PDF: ' + error.message + '\nPor favor, intenta de nuevo.');
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
+    }
+}
+
+// ============ OBTENER DATOS DEL RECIBO ============
+function obtenerDatosRecibo() {
+    // Primero intentar obtener los datos guardados en la variable global
+    if (window.datosRecibo) {
+        return window.datosRecibo;
+    }
+    
+    // Si no, intentar extraer del DOM
+    try {
+        const reciboContent = document.getElementById('reciboContent');
+        if (!reciboContent) {
+            throw new Error('No se encontró el contenido del recibo');
+        }
+        
+        // Función auxiliar para obtener texto de un elemento
+        const getText = (selector) => {
+            const element = reciboContent.querySelector(selector);
+            return element ? element.textContent.trim() : '';
+        };
+        
+        // Extraer folio
+        const folioSpan = reciboContent.querySelector('span[style*="color: #007bff"]');
+        const folio = folioSpan ? folioSpan.textContent.trim() : 'N/A';
+        
+        // Extraer nombre
+        const nombreText = getText('p:not(:has(span)):first-of-type');
+        const nombre = nombreText.replace('Nombre:', '').trim() || 'N/A';
+        
+        // Extraer email
+        let email = 'No proporcionado';
+        const emailElement = reciboContent.querySelector('p:contains("Correo electrónico:")');
+        if (emailElement) {
+            email = emailElement.textContent.replace('Correo electrónico:', '').trim();
+        }
+        
+        // Extraer teléfono
+        let telefono = 'No proporcionado';
+        const telefonoElement = reciboContent.querySelector('p:contains("Teléfono:")');
+        if (telefonoElement) {
+            telefono = telefonoElement.textContent.replace('Teléfono:', '').trim();
+        }
+        
+        // Extraer mensaje
+        const mensajeDiv = reciboContent.querySelector('div[style*="background: #f1f1f1"]');
+        const mensaje = mensajeDiv ? mensajeDiv.textContent.trim() : 'Sin mensaje';
+        
+        // Extraer fecha
+        const fechaText = getText('p:contains("Fecha y hora:")');
+        const fecha = fechaText.replace('Fecha y hora:', '').trim() || new Date().toLocaleString('es-MX');
+        
+        return {
+            folio: folio,
+            nombre: nombre,
+            email: email,
+            telefono: telefono,
+            mensaje: mensaje,
+            fecha: fecha
+        };
+        
+    } catch (error) {
+        console.warn('Error al extraer datos del DOM, usando valores por defecto:', error);
+        return {
+            folio: 'N/A',
+            nombre: 'N/A',
+            email: 'No proporcionado',
+            telefono: 'No proporcionado',
+            mensaje: 'Sin mensaje',
+            fecha: new Date().toLocaleString('es-MX')
+        };
+    }
 }
 
 // ============ VALIDACIONES ============

@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buzón de Quejas</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
-        <h1>Buzón de Quejas, Sugerencias y Felicitaciones</h1>
+        <h1><i class="fas fa-inbox"></i> Buzón de Quejas, Sugerencias y Felicitaciones</h1>
         
         <form id="quejaForm">
             <div class="form-group">
-                <label for="nombre">Nombre completo *</label>
+                <label for="nombre">Nombre completo <span style="color: #dc3545;">*</span></label>
                 <input type="text" id="nombre" required>
             </div>
 
             <div class="form-group">
-                <label>Información de contacto *</label>
+                <label>Información de contacto <span style="color: #dc3545;">*</span></label>
                 <div class="contact-group">
                     <input type="email" id="email" placeholder="Correo electrónico">
                     <span>o</span>
@@ -26,32 +27,30 @@
                 <small>Debes proporcionar al menos un medio de contacto válido</small>
             </div>
 
-            
             <div class="form-group">
-                <label for="mensaje">Mensaje *</label>
+                <label for="mensaje">Mensaje <span style="color: #dc3545;">*</span></label>
                 <textarea id="mensaje" rows="5" placeholder="Escribe aquí tu queja, sugerencia o felicitación..." required></textarea>
             </div>
 
-            <button type="submit" id="btnEnviar">Enviar</button>
+            <button type="submit" id="btnEnviar"><i class="fas fa-paper-plane"></i> Enviar</button>
         </form>
 
         <!-- CONFIRMACIÓN -->
         <div id="confirmacion" style="display:none;">
-            <h2>✅ ¡Asunto registrado!</h2>
+            <h2><i class="fas fa-check-circle" style="color: #2d7d46;"></i> ¡Asunto registrado!</h2>
             <div id="recibo"></div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0;">
-                <button onclick="generarPDF()">📄 Guardar recibo en PDF</button>
+                <button onclick="generarPDF()"><i class="fas fa-file-pdf"></i> Guardar recibo en PDF</button>
                 <button onclick="volverAlFormulario()" style="background: #28a745;">
-                    ➕ Registrar otro asunto
+                    <i class="fas fa-plus"></i> Registrar otro asunto
                 </button>
             </div>
             
             <div class="info-contacto">
-                <h3>📌 Tu asunto será atendido a la brevedad</h3>
-                <p>Puedes contactarnos en:</p>
-                <p>📧 administracion@tuorganizacion.com</p>
-                <p>📞 (55) 1234-5678</p>
-                <p>🕐 Horario de atención: Lunes a Viernes de 9:00 a 16:00 horas</p>
+                <h3><i class="fas fa-info-circle"></i> Tu asunto será atendido a la brevedad</h3>
+                <p><i class="fas fa-envelope"></i> administracion@tuorganizacion.com</p>
+                <p><i class="fas fa-phone"></i> (55) 1234-5678</p>
+                <p><i class="fas fa-clock"></i> Horario de atención: Lunes a Viernes de 9:00 a 16:00 horas</p>
             </div>
         </div>
     </div>
@@ -59,7 +58,7 @@
     <!-- SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/form.js"></script>
 </body>
