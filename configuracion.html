@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Administración</title>
+    <link rel="stylesheet" href="css/configuracion.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="config-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar-config">
+            <div class="sidebar-header">
+                <i class="fas fa-cog logo-icon"></i>
+                <h2>Configuración</h2>
+            </div>
+
+            <div class="sidebar-user">
+                <i class="fas fa-user-circle"></i>
+                <span id="userEmailConfig">admin@ejemplo.com</span>
+                <button id="btnLogoutConfig" class="btn-logout" title="Cerrar sesión">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+
+            <nav class="config-nav">
+                <a href="#" class="nav-item active" data-tab="general">
+                    <i class="fas fa-sliders-h"></i> General
+                </a>
+                <a href="#" class="nav-item" data-tab="contacto">
+                    <i class="fas fa-address-card"></i> Contacto
+                </a>
+                <a href="#" class="nav-item" data-tab="dependencias">
+                    <i class="fas fa-building"></i> Dependencias
+                </a>
+                <a href="#" class="nav-item" data-tab="seguridad">
+                    <i class="fas fa-shield-alt"></i> Seguridad
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="admin.html" class="btn-volver-dashboard">
+                    <i class="fas fa-arrow-left"></i> Volver al Panel
+                </a>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content-config">
+            <!-- HEADER -->
+            <header class="main-header-config">
+                <h1>
+                    <i class="fas fa-cog"></i> Configuración del Sistema
+                </h1>
+                <div class="header-actions">
+                    <button id="btnRecargarConfig" class="btn-recargar">
+                        <i class="fas fa-sync"></i> Recargar
+                    </button>
+                </div>
+            </header>
+
+            <!-- PESTAÑA: GENERAL -->
+            <section id="tab-general" class="tab-content active">
+                <div class="config-card">
+                    <h3><i class="fas fa-info-circle"></i> Información General</h3>
+                    <form id="formConfigGeneral">
+                        <div class="form-group">
+                            <label for="nombreBuzon">Nombre del Buzón</label>
+                            <input type="text" id="nombreBuzon" placeholder="Ej: Buzón de Quejas Ciudadanas">
+                            <small>Este nombre se mostrará en el formulario público</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="tituloAdmin">Título del Panel de Administración</label>
+                            <input type="text" id="tituloAdmin" placeholder="Ej: Panel de Administración - Buzón">
+                        </div>
+                        <div class="form-group">
+                            <label for="descripcionBuzon">Descripción del Buzón</label>
+                            <textarea id="descripcionBuzon" rows="3" placeholder="Breve descripción del sistema de atención ciudadana"></textarea>
+                        </div>
+                        <button type="submit" class="btn-success">
+                            <i class="fas fa-save"></i> Guardar cambios
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- PESTAÑA: CONTACTO -->
+            <section id="tab-contacto" class="tab-content">
+                <div class="config-card">
+                    <h3><i class="fas fa-address-card"></i> Información de Contacto</h3>
+                    <form id="formConfigContacto">
+                        <div class="form-group">
+                            <label for="emailContacto">Correo electrónico de contacto</label>
+                            <input type="email" id="emailContacto" placeholder="administracion@ejemplo.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="telefonoContacto">Teléfono de contacto</label>
+                            <input type="tel" id="telefonoContacto" placeholder="(55) 1234-5678">
+                        </div>
+                        <div class="form-group">
+                            <label for="horarioAtencion">Horario de atención</label>
+                            <input type="text" id="horarioAtencion" placeholder="Lunes a Viernes de 9:00 a 16:00 horas">
+                        </div>
+                        <div class="form-group">
+                            <label for="direccionContacto">Dirección (opcional)</label>
+                            <input type="text" id="direccionContacto" placeholder="Calle, número, colonia, ciudad">
+                        </div>
+                        <button type="submit" class="btn-success">
+                            <i class="fas fa-save"></i> Guardar cambios
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- PESTAÑA: DEPENDENCIAS -->
+            <section id="tab-dependencias" class="tab-content">
+                <div class="config-card">
+                    <h3><i class="fas fa-building"></i> Gestionar Dependencias</h3>
+                    <p class="text-muted" style="margin-bottom: 15px;">
+                        Las dependencias se mostrarán en el formulario de seguimiento y en los filtros del panel de administración.
+                    </p>
+
+                    <div class="dependencias-actions">
+                        <button id="btnAgregarDependencia" class="btn-success">
+                            <i class="fas fa-plus"></i> Agregar dependencia
+                        </button>
+                    </div>
+
+                    <div id="dependenciasContainer" class="dependencias-list">
+                        <p style="color: var(--text-muted); text-align: center; padding: 20px;">Cargando dependencias...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PESTAÑA: SEGURIDAD -->
+            <section id="tab-seguridad" class="tab-content">
+                <div class="config-card">
+                    <h3><i class="fas fa-shield-alt"></i> Seguridad</h3>
+                    
+                    <div class="security-section">
+                        <h4>Gestionar administradores</h4>
+                        <p class="text-muted">Administra los usuarios con acceso al panel de administración.</p>
+                        
+                        <div class="form-row" style="margin-top: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="emailNuevoAdmin">Correo del nuevo administrador</label>
+                                <input type="email" id="emailNuevoAdmin" placeholder="nuevo@ejemplo.com">
+                            </div>
+                            <div class="form-group" style="flex: 0 0 auto;">
+                                <label>&nbsp;</label>
+                                <button id="btnAgregarAdmin" class="btn-success">
+                                    <i class="fas fa-user-plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="administradoresList" class="admins-list">
+                            <p style="color: var(--text-muted); padding: 15px 0;">Cargando administradores...</p>
+                        </div>
+                    </div>
+
+                    <hr class="config-divider">
+
+                    <div class="security-section">
+                        <h4 style="color: var(--danger);">Zona de peligro</h4>
+                        <p class="text-muted">Acciones que no se pueden deshacer.</p>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                            <button id="btnLimpiarCache" class="btn-secondary">
+                                <i class="fas fa-broom"></i> Limpiar caché local
+                            </button>
+                            <button id="btnCambiarPassword" class="btn-secondary">
+                                <i class="fas fa-key"></i> Cambiar contraseña
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL PARA DEPENDENCIA -->
+    <div id="modalDependencia" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeModalDep">&times;</span>
+            <h3 id="modalDepTitulo"><i class="fas fa-building"></i> Nueva dependencia</h3>
+            <form id="formDependencia">
+                <input type="hidden" id="depEditId">
+                <div class="form-group">
+                    <label for="depNombre">Nombre de la dependencia <span class="required">*</span></label>
+                    <input type="text" id="depNombre" placeholder="Ej: Sistemas, Recursos Humanos..." required>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                    <label style="margin: 0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="depActivo" checked>
+                        <span>Activa</span>
+                    </label>
+                    <small style="margin: 0; color: var(--text-muted);">Si está inactiva, no se mostrará en las listas</small>
+                </div>
+                <button type="submit" class="btn-success">
+                    <i class="fas fa-save"></i> Guardar dependencia
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL PARA CAMBIAR CONTRASEÑA -->
+    <div id="modalCambiarPassword" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <span class="close" id="closeModalPass">&times;</span>
+            <h3><i class="fas fa-key"></i> Cambiar contraseña</h3>
+            <form id="formCambiarPassword">
+                <div class="form-group">
+                    <label for="passActual">Contraseña actual <span class="required">*</span></label>
+                    <input type="password" id="passActual" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label for="passNueva">Nueva contraseña <span class="required">*</span></label>
+                    <input type="password" id="passNueva" placeholder="Mínimo 6 caracteres" required>
+                </div>
+                <div class="form-group">
+                    <label for="passConfirmar">Confirmar nueva contraseña <span class="required">*</span></label>
+                    <input type="password" id="passConfirmar" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-success">
+                    <i class="fas fa-save"></i> Cambiar contraseña
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE ERROR -->
+    <div id="errorModalConfig" class="error-modal">
+        <div class="error-modal-content">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h2 id="errorTitleConfig">Error</h2>
+            <p id="errorMessageConfig">Ocurrió un error</p>
+            <button onclick="cerrarErrorConfig()" class="btn-error-close">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN -->
+    <div id="modalConfirmacion" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h3 id="confirmTitulo"><i class="fas fa-question-circle"></i> Confirmar</h3>
+            <p id="confirmMensaje" style="margin: 15px 0; color: var(--text-secondary);">¿Estás seguro de realizar esta acción?</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="confirmSi" class="btn-success">Sí, continuar</button>
+                <button id="confirmNo" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/configuracion.js"></script>
+</body>
+</html>

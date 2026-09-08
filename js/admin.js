@@ -6,6 +6,30 @@ let ticketsNuevos = new Set();
 let todosLosTickets = [];
 let dependenciasList = [];
 
+// ============ CARGAR CONFIGURACIÓN PARA EL TÍTULO ============
+async function cargarConfiguracionAdmin() {
+    try {
+        const doc = await db.collection('configuracion').doc('general').get();
+        if (doc.exists && doc.data().tituloAdmin) {
+            const titulo = doc.data().tituloAdmin;
+            document.querySelector('.main-header h1').innerHTML = '<i class="fas fa-chart-pie"></i> ' + titulo;
+        }
+    } catch (error) {
+        console.error('Error al cargar configuración admin:', error);
+    }
+}
+
+// Llamar después de autenticar
+auth.onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById('userEmailText').textContent = user.email;
+        cargarConfiguracionAdmin();
+        cargarDependencias().then(() => cargarTodosLosTickets());
+    } else {
+        window.location.href = 'login.html';
+    }
+});
+
 // ============ VERIFICAR AUTENTICACIÓN ============
 auth.onAuthStateChanged(user => {
     if (user) {

@@ -118,6 +118,51 @@ document.getElementById('quejaForm').addEventListener('submit', async function(e
     }
 });
 
+// ============ CARGAR CONFIGURACIÓN ============
+async function cargarConfiguracionPublica() {
+    try {
+        const doc = await db.collection('configuracion').doc('general').get();
+        if (doc.exists) {
+            const data = doc.data();
+            
+            // Título del buzón
+            if (data.nombreBuzon) {
+                document.getElementById('tituloBuzon').textContent = data.nombreBuzon;
+            }
+            
+            // Información de contacto
+            if (data.emailContacto) {
+                document.getElementById('infoEmail').textContent = data.emailContacto;
+            }
+            if (data.telefonoContacto) {
+                document.getElementById('infoTelefono').textContent = data.telefonoContacto;
+            }
+            if (data.horarioAtencion) {
+                document.getElementById('infoHorario').textContent = data.horarioAtencion;
+            }
+            if (data.direccionContacto) {
+                document.getElementById('infoDireccion').style.display = 'block';
+                document.getElementById('infoDireccionTexto').textContent = data.direccionContacto;
+            }
+            if (data.descripcionBuzon) {
+                document.getElementById('infoTitulo').textContent = data.descripcionBuzon;
+            }
+        }
+    } catch (error) {
+        console.error('Error al cargar configuración pública:', error);
+    }
+}
+
+// Llamar a la función al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Esperar a que Firebase esté listo
+    if (typeof db !== 'undefined') {
+        cargarConfiguracionPublica();
+    } else {
+        setTimeout(cargarConfiguracionPublica, 1000);
+    }
+});
+
 // ============ MOSTRAR CONFIRMACIÓN ============
 function mostrarConfirmacion(data) {
     document.getElementById('quejaForm').style.display = 'none';

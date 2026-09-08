@@ -843,3 +843,26 @@ tr:hover td {
         padding: 10px 12px;
     }
 }
+
+/* ============ BOTÓN CONFIGURACIÓN ============ */
+.header-actions .btn-configuracion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.header-actions .btn-configuracion:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+}

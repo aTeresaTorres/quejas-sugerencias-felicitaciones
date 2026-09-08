@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="container">
-        <h1><i class="fas fa-inbox"></i> Buzón de Quejas, Sugerencias y Felicitaciones</h1>
+        <h1><i class="fas fa-inbox"></i> <span id="tituloBuzon">Buzón de Quejas, Sugerencias y Felicitaciones</span></h1>
         
         <form id="quejaForm">
             <div class="form-group">
@@ -47,10 +47,11 @@
             </div>
             
             <div class="info-contacto">
-                <h3><i class="fas fa-info-circle"></i> Tu asunto será atendido a la brevedad</h3>
-                <p><i class="fas fa-envelope"></i> administracion@tuorganizacion.com</p>
-                <p><i class="fas fa-phone"></i> (55) 1234-5678</p>
-                <p><i class="fas fa-clock"></i> Horario de atención: Lunes a Viernes de 9:00 a 16:00 horas</p>
+                <h3><i class="fas fa-info-circle"></i> <span id="infoTitulo">Tu asunto será atendido a la brevedad</span></h3>
+                <p><i class="fas fa-envelope"></i> <span id="infoEmail">administracion@tuorganizacion.com</span></p>
+                <p><i class="fas fa-phone"></i> <span id="infoTelefono">(55) 1234-5678</span></p>
+                <p><i class="fas fa-clock"></i> <span id="infoHorario">Lunes a Viernes de 9:00 a 16:00 horas</span></p>
+                <p id="infoDireccion" style="display: none;"><i class="fas fa-map-marker-alt"></i> <span id="infoDireccionTexto"></span></p>
             </div>
         </div>
     </div>
