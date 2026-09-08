@@ -30,16 +30,6 @@ async function cargarDependencias() {
         llenarSelectDependencias();
     } catch (error) {
         console.error('Error al cargar dependencias:', error);
-        dependenciasList = [
-            { id: 'sistemas', nombre: 'Sistemas' },
-            { id: 'recursos_humanos', nombre: 'Recursos Humanos' },
-            { id: 'finanzas', nombre: 'Finanzas' },
-            { id: 'operaciones', nombre: 'Operaciones' },
-            { id: 'atencion_cliente', nombre: 'Atención al Cliente' },
-            { id: 'juridico', nombre: 'Jurídico' },
-            { id: 'compras', nombre: 'Compras' }
-        ];
-        llenarSelectDependencias();
     }
 }
 
@@ -186,8 +176,8 @@ function calcularDiasHabiles(fechaInicio, fechaFin) {
     if (current >= end) return 0;
 
     const diasFestivos = [
-        '2026-01-01', '2026-02-02', '2026-03-16', '2026-05-01',
-        '2026-09-16', '2026-11-16', '2026-12-25'
+        '2026-01-01', '2026-02-02', '2026-03-16', '2026-04-02', '2026-04-03', 
+        '2026-05-01', '2026-09-16', '2026-11-02', '2026-11-16', '2026-12-25'
     ];
 
     current.setDate(current.getDate() + 1);
