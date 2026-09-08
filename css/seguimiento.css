@@ -458,6 +458,89 @@ header .btn-volver:hover {
     transform: translateY(-1px);
 }
 
+/* ============ MODAL DE ERROR (pantalla completa) ============ */
+.error-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    animation: fadeInOverlay 0.3s ease;
+}
+
+.error-modal.show {
+    display: flex;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.error-modal-content {
+    background: white;
+    max-width: 450px;
+    width: 90%;
+    padding: 35px 30px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideInModal 0.3s ease;
+}
+
+@keyframes slideInModal {
+    from { transform: translateY(-30px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.error-modal-content .error-icon {
+    font-size: 60px;
+    color: #8b1a1a;
+    margin-bottom: 15px;
+}
+
+.error-modal-content .error-icon i {
+    background: #f5e6e6;
+    padding: 20px;
+    border-radius: 50%;
+}
+
+.error-modal-content h2 {
+    color: #1a3a5c;
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+}
+
+.error-modal-content p {
+    color: #4a5a6a;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.error-modal-content .btn-error-close {
+    background: #1a3a5c;
+    color: white;
+    border: none;
+    padding: 10px 30px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.error-modal-content .btn-error-close:hover {
+    background: #0f2a45;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(26, 58, 92, 0.3);
+}
+
 /* ============ RESPONSIVE ============ */
 @media (max-width: 768px) {
     body {
@@ -501,6 +584,10 @@ header .btn-volver:hover {
     
     .mensaje-usuario-box p {
         font-size: 14px;
+    }
+    
+    .error-modal-content {
+        padding: 25px 20px;
     }
 }
 

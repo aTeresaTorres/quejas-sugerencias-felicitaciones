@@ -9,8 +9,8 @@ const urlParams = new URLSearchParams(window.location.search);
 ticketId = urlParams.get('id');
 
 if (!ticketId) {
-    alert('No se especificó un ticket');
-    window.location.href = 'admin.html';
+    mostrarError('Error', 'No se especificó un ticket');
+    setTimeout(() => window.location.href = 'admin.html', 2000);
 }
 
 // ============ CARGAR DEPENDENCIAS DESDE FIRESTORE ============
@@ -22,7 +22,6 @@ async function cargarDependencias() {
             dependenciasList.push({ id: doc.id, ...doc.data() });
         });
         
-        // Si no hay dependencias, crear las predeterminadas
         if (dependenciasList.length === 0) {
             await crearDependenciasPredeterminadas();
             return cargarDependencias();
@@ -31,7 +30,6 @@ async function cargarDependencias() {
         llenarSelectDependencias();
     } catch (error) {
         console.error('Error al cargar dependencias:', error);
-        // Fallback: usar lista en código
         dependenciasList = [
             { id: 'sistemas', nombre: 'Sistemas' },
             { id: 'recursos_humanos', nombre: 'Recursos Humanos' },
@@ -66,13 +64,25 @@ async function crearDependenciasPredeterminadas() {
 
 function llenarSelectDependencias() {
     const select = document.getElementById('dependenciaTicket');
-    select.innerHTML = '';
+    select.innerHTML = '<option value="">-- Seleccionar dependencia --</option>';
     dependenciasList.forEach(dep => {
         const option = document.createElement('option');
         option.value = dep.id;
         option.textContent = dep.nombre;
         select.appendChild(option);
     });
+}
+
+// ============ MODAL DE ERROR ============
+function mostrarError(titulo, mensaje) {
+    const modal = document.getElementById('errorModal');
+    document.getElementById('errorTitle').textContent = titulo || 'Error';
+    document.getElementById('errorMessage').textContent = mensaje || 'Ocurrió un error inesperado';
+    modal.classList.add('show');
+}
+
+function cerrarErrorModal() {
+    document.getElementById('errorModal').classList.remove('show');
 }
 
 // ============ VERIFICAR AUTENTICACIÓN ============
@@ -114,23 +124,52 @@ function fechaHoy() {
 
 function parseFechaLocal(fecha) {
     if (!fecha) return null;
-    if (fecha.toDate) return fecha.toDate();
-    if (fecha instanceof Date) return fecha;
+    
+    // Si es Timestamp de Firestore
+    if (fecha.toDate) {
+        return fecha.toDate();
+    }
+    
+    // Si ya es un objeto Date
+    if (fecha instanceof Date) {
+        return fecha;
+    }
+    
+    // Si es string
     if (typeof fecha === 'string') {
+        // Si viene en formato YYYY-MM-DD
         if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
             return new Date(fecha + 'T00:00:00');
         }
+        // Si es ISO
         return new Date(fecha);
     }
+    
     return null;
 }
 
-function compararFechas(fecha1, fecha2) {
+// Función mejorada para obtener fecha en formato YYYY-MM-DD
+function obtenerFechaStr(fecha) {
+    if (!fecha) return '';
+    const d = parseFechaLocal(fecha);
+    if (!d || isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// ============ FUNCIONES DE VALIDACIÓN DE FECHAS ============
+function fechaMenorOIgual(fecha1, fecha2) {
     if (!fecha1 || !fecha2) return true;
     const d1 = parseFechaLocal(fecha1);
     const d2 = parseFechaLocal(fecha2);
     if (!d1 || !d2) return true;
-    return d1 <= d2;
+    const d1Norm = new Date(d1);
+    d1Norm.setHours(0, 0, 0, 0);
+    const d2Norm = new Date(d2);
+    d2Norm.setHours(0, 0, 0, 0);
+    return d1Norm <= d2Norm;
 }
 
 function calcularDiasHabiles(fechaInicio, fechaFin) {
@@ -203,8 +242,8 @@ async function cargarTicket() {
     try {
         const doc = await db.collection('tickets').doc(ticketId).get();
         if (!doc.exists) {
-            alert('Ticket no encontrado');
-            window.location.href = 'admin.html';
+            mostrarError('Ticket no encontrado', 'El ticket que buscas no existe o fue eliminado');
+            setTimeout(() => window.location.href = 'admin.html', 2000);
             return;
         }
 
@@ -213,14 +252,14 @@ async function cargarTicket() {
 
     } catch (error) {
         console.error('Error al cargar ticket:', error);
-        alert('Error al cargar el ticket: ' + error.message);
+        mostrarError('Error al cargar', 'No se pudo cargar el ticket: ' + error.message);
     }
 }
 
 // ============ VERIFICAR SI SE PUEDE AVANZAR ============
 function puedeAvanzar(pasoRequerido) {
     if (ticketData.estado === 'cerrado' && ticketData.asunto === 'no_procede') {
-        alert('Este ticket fue cerrado como "No procede"');
+        mostrarError('Ticket cerrado', 'Este ticket fue cerrado como "No procede"');
         return false;
     }
 
@@ -228,42 +267,42 @@ function puedeAvanzar(pasoRequerido) {
 
     switch (paso) {
         case 2:
-            if (ticketData.asunto === 'pendiente_clasificar' || !ticketData.dependencia || ticketData.dependencia === 'sin_asignar') {
-                alert('Primero debes clasificar el asunto y asignar dependencia (Paso 1)');
+            if (ticketData.asunto === 'pendiente_clasificar' || !ticketData.dependencia || ticketData.dependencia === 'sin_asignar' || ticketData.dependencia === '') {
+                mostrarError('Paso incompleto', 'Primero debes clasificar el asunto y asignar dependencia (Paso 1)');
                 return false;
             }
             break;
         case 3:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
-                alert('Primero debes registrar el envío a dependencia (Paso 2)');
+                mostrarError('Paso incompleto', 'Primero debes registrar el envío a dependencia (Paso 2)');
                 return false;
             }
             const respuestasDep = ticketData.respuestasDependencia || [];
             if (respuestasDep.length > 0) {
-                alert('Ya se registró la respuesta de la dependencia. No se pueden agregar más envíos adicionales.');
+                mostrarError('No permitido', 'Ya se registró la respuesta de la dependencia. No se pueden agregar más envíos adicionales.');
                 return false;
             }
             break;
         case 4:
             if (!ticketData.enviosDependencia || ticketData.enviosDependencia.length === 0) {
-                alert('Primero debes registrar el envío a dependencia (Paso 2)');
+                mostrarError('Paso incompleto', 'Primero debes registrar el envío a dependencia (Paso 2)');
                 return false;
             }
             const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
             if (!fechaRecibido) {
-                alert('Debes actualizar la fecha de recibido del primer envío antes de continuar');
+                mostrarError('Paso incompleto', 'Debes actualizar la fecha de recibido del primer envío antes de continuar');
                 return false;
             }
             break;
         case 5:
             if (!ticketData.respuestasDependencia || ticketData.respuestasDependencia.length === 0) {
-                alert('Primero debes registrar la respuesta de la dependencia (Paso 4)');
+                mostrarError('Paso incompleto', 'Primero debes registrar la respuesta de la dependencia (Paso 4)');
                 return false;
             }
             break;
         case 6:
             if (!ticketData.respuestasCiudadano || ticketData.respuestasCiudadano.length === 0) {
-                alert('Primero debes registrar la respuesta al ciudadano (Paso 5)');
+                mostrarError('Paso incompleto', 'Primero debes registrar la respuesta al ciudadano (Paso 5)');
                 return false;
             }
             break;
@@ -296,17 +335,18 @@ function mostrarTicket() {
     estadoEl.textContent = estadoLabel;
     estadoEl.className = 'estado ' + t.estado;
 
-    document.getElementById('asuntoTicket').value = t.asunto || 'pendiente_clasificar';
+    const asuntoSelect = document.getElementById('asuntoTicket');
+    if (t.asunto === 'pendiente_clasificar' || !t.asunto) {
+        asuntoSelect.value = 'pendiente_clasificar';
+    } else {
+        asuntoSelect.value = t.asunto;
+    }
     
-    // Seleccionar la dependencia correcta
-    if (t.dependencia) {
-        const select = document.getElementById('dependenciaTicket');
-        for (let i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === t.dependencia) {
-                select.selectedIndex = i;
-                break;
-            }
-        }
+    const depSelect = document.getElementById('dependenciaTicket');
+    if (t.dependencia && t.dependencia !== 'sin_asignar' && t.dependencia !== '') {
+        depSelect.value = t.dependencia;
+    } else {
+        depSelect.value = '';
     }
 
     if (t.asunto === 'no_procede') {
@@ -347,7 +387,7 @@ function mostrarPaso(id) {
 // ============ PASO 1: MOSTRAR ============
 function mostrarPaso1() {
     const t = ticketData;
-    const tieneDatos = t.asunto && t.asunto !== 'pendiente_clasificar' && t.dependencia && t.dependencia !== 'sin_asignar';
+    const tieneDatos = t.asunto && t.asunto !== 'pendiente_clasificar' && t.dependencia && t.dependencia !== 'sin_asignar' && t.dependencia !== '';
 
     if (tieneDatos) {
         document.getElementById('formPaso1').style.display = 'none';
@@ -386,6 +426,18 @@ async function actualizarDatosTicket() {
     const asunto = document.getElementById('asuntoTicket').value;
     const dependencia = document.getElementById('dependenciaTicket').value;
 
+    if (asunto === 'pendiente_clasificar') {
+        ocultarLoading(btn, textoOriginal);
+        mostrarError('Campo incompleto', 'Por favor, selecciona un asunto válido');
+        return;
+    }
+
+    if (!dependencia || dependencia === '') {
+        ocultarLoading(btn, textoOriginal);
+        mostrarError('Campo incompleto', 'Por favor, selecciona una dependencia');
+        return;
+    }
+
     if (asunto === 'no_procede') {
         try {
             await db.collection('tickets').doc(ticketId).update({
@@ -401,8 +453,8 @@ async function actualizarDatosTicket() {
             return;
         } catch (error) {
             console.error('Error:', error);
-            alert('Error al actualizar: ' + error.message);
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Error al actualizar', error.message);
             return;
         }
     }
@@ -423,12 +475,12 @@ async function actualizarDatosTicket() {
 
     } catch (error) {
         console.error('Error al actualizar:', error);
-        alert('Error al actualizar: ' + error.message);
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Error al actualizar', error.message);
     }
 }
 
-// ============ PASO 2: MOSTRAR ENVÍO ============
+// ============ PASO 2: MOSTRAR ENVÍO (CORREGIDO) ============
 function mostrarEnvioDependencia() {
     const envioPrincipal = obtenerEnvioPrincipal();
 
@@ -436,17 +488,47 @@ function mostrarEnvioDependencia() {
         document.getElementById('formEnvioDependencia').style.display = 'block';
         document.getElementById('envioDependenciaRegistrado').style.display = 'none';
 
-        const fechaCreacion = ticketData.fechaCreacion;
-        const hoy = fechaHoy();
-        const minFecha = fechaCreacion ? new Date(fechaCreacion).toISOString().split('T')[0] : '';
+        // Obtener fecha de creación correctamente
+        let fechaCreacion = ticketData.fechaCreacion;
+        let hoy = fechaHoy();
+        
+        // Convertir fecha de creación a string YYYY-MM-DD
+        let minFecha = '';
+        if (fechaCreacion) {
+            const parsed = parseFechaLocal(fechaCreacion);
+            if (parsed && !isNaN(parsed.getTime())) {
+                minFecha = obtenerFechaStr(parsed);
+            }
+        }
+
+        // 🔥 CORRECCIÓN: Si minFecha es mayor que hoy, usar hoy como mínimo
+        // Esto puede pasar si la fecha de creación es posterior a hoy por zona horaria
+        if (minFecha && minFecha > hoy) {
+            console.warn('⚠️ minFecha (' + minFecha + ') es mayor que hoy (' + hoy + '). Usando hoy como mínimo.');
+            minFecha = hoy;
+        }
+
+        // Si no hay minFecha, usar hoy
+        if (!minFecha) {
+            minFecha = hoy;
+        }
 
         const fechaElabInput = document.getElementById('fechaElaboracion');
         const fechaRecInput = document.getElementById('fechaRecibidoDependencia');
 
+        // Establecer atributos
         fechaElabInput.setAttribute('min', minFecha);
         fechaElabInput.setAttribute('max', hoy);
         fechaRecInput.setAttribute('max', hoy);
         fechaRecInput.setAttribute('min', minFecha);
+
+        // Si minFecha === hoy, pre-seleccionar hoy para facilitar
+        if (minFecha === hoy) {
+            fechaElabInput.value = hoy;
+        }
+
+        // Debug en consola
+        console.log('📅 Fechas configuradas - min:', minFecha, 'max:', hoy);
 
         return;
     }
@@ -486,12 +568,22 @@ function mostrarEnvioDependencia() {
 function editarFechaRecibido() {
     const envioPrincipal = obtenerEnvioPrincipal();
     if (!envioPrincipal) {
-        alert('No hay envío principal registrado');
+        mostrarError('Error', 'No hay envío principal registrado');
         return;
     }
 
     const fechaElaboracion = envioPrincipal.fechaElaboracion || '';
     const hoy = fechaHoy();
+
+    // Obtener fecha mínima correcta
+    let minFecha = '';
+    if (fechaElaboracion) {
+        const parsed = parseFechaLocal(fechaElaboracion);
+        if (parsed && !isNaN(parsed.getTime())) {
+            minFecha = obtenerFechaStr(parsed);
+        }
+    }
+    if (!minFecha) minFecha = hoy;
 
     const modal = document.createElement('div');
     modal.id = 'modalFechaRecibido';
@@ -507,7 +599,7 @@ function editarFechaRecibido() {
             <div class="form-group">
                 <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido <span class="required">*</span></label>
                 <input type="date" id="nuevaFechaRecibido" 
-                       min="${fechaElaboracion}" max="${hoy}"
+                       min="${minFecha}" max="${hoy}"
                        style="width: 100%; padding: 10px; border: 2px solid #d0d8e0; border-radius: 6px; font-size: 16px;">
                 <small style="color: #7a8a9a; display: block; margin-top: 4px;">Debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)})</small>
             </div>
@@ -525,7 +617,7 @@ function editarFechaRecibido() {
         const nuevaFecha = fechaInput.value;
 
         if (!nuevaFecha) {
-            alert('Por favor, selecciona una fecha');
+            mostrarError('Campo incompleto', 'Por favor, selecciona una fecha');
             return;
         }
 
@@ -559,7 +651,13 @@ async function actualizarFechaRecibido(nuevaFecha) {
         const envios = data.enviosDependencia || [];
 
         if (envios.length === 0) {
-            alert('No se encontró el envío principal');
+            mostrarError('Error', 'No se encontró el envío principal');
+            return;
+        }
+
+        const fechaElaboracion = envios[0].fechaElaboracion;
+        if (fechaElaboracion && !fechaMenorOIgual(fechaElaboracion, nuevaFecha)) {
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser anterior a la fecha de elaboración');
             return;
         }
 
@@ -576,7 +674,7 @@ async function actualizarFechaRecibido(nuevaFecha) {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al actualizar: ' + error.message);
+        mostrarError('Error al actualizar', error.message);
     }
 }
 
@@ -594,36 +692,36 @@ async function registrarEnvioDependencia() {
     const hoy = fechaHoy();
 
     if (!descripcion || !oficio || !fechaElaboracion) {
-        alert('Por favor, completa todos los campos obligatorios');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Campos incompletos', 'Por favor, completa todos los campos obligatorios');
         return;
     }
 
     const fechaCreacion = ticketData.fechaCreacion;
     if (fechaCreacion) {
-        const fechaCreacionStr = new Date(fechaCreacion).toISOString().split('T')[0];
-        if (!compararFechas(fechaCreacionStr, fechaElaboracion)) {
-            alert('La fecha de elaboración no puede ser anterior a la fecha de creación del ticket');
+        const fechaCreacionStr = obtenerFechaStr(fechaCreacion);
+        if (fechaCreacionStr && !fechaMenorOIgual(fechaCreacionStr, fechaElaboracion)) {
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Fecha inválida', 'La fecha de elaboración no puede ser anterior a la fecha de creación del ticket');
             return;
         }
     }
 
     if (fechaElaboracion > hoy) {
-        alert('La fecha de elaboración no puede ser futura');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Fecha inválida', 'La fecha de elaboración no puede ser futura');
         return;
     }
 
     if (fechaRecibido) {
         if (fechaRecibido > hoy) {
-            alert('La fecha de recibido no puede ser futura');
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser futura');
             return;
         }
-        if (!compararFechas(fechaElaboracion, fechaRecibido)) {
-            alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
+        if (!fechaMenorOIgual(fechaElaboracion, fechaRecibido)) {
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser anterior a la fecha de elaboración');
             return;
         }
     }
@@ -635,8 +733,8 @@ async function registrarEnvioDependencia() {
         const enviosActuales = data.enviosDependencia || [];
 
         if (enviosActuales.length > 0) {
-            alert('Ya existe un envío principal registrado para este ticket.');
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Ya registrado', 'Ya existe un envío principal registrado para este ticket.');
             cargarTicket();
             return;
         }
@@ -667,8 +765,8 @@ async function registrarEnvioDependencia() {
 
     } catch (error) {
         console.error('Error al registrar envío:', error);
-        alert('Error al registrar: ' + error.message);
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Error al registrar', error.message);
     }
 }
 
@@ -679,26 +777,25 @@ function agregarEnvioAdicional() {
     const container = document.getElementById('enviosAdicionalesContainer');
     const hoy = fechaHoy();
     const fechaCreacion = ticketData.fechaCreacion;
-    const minFecha = fechaCreacion ? new Date(fechaCreacion).toISOString().split('T')[0] : '';
+    const minFecha = fechaCreacion ? obtenerFechaStr(fechaCreacion) : hoy;
 
     const primerEnvio = obtenerEnvioPrincipal();
-    let fechaMinimaAdicional = minFecha;
+    let fechaMinimaAdicional = minFecha || hoy;
 
     if (primerEnvio && primerEnvio.fechaRecibido) {
         const fechaRecibido = parseFechaLocal(primerEnvio.fechaRecibido);
-        let dias = 0;
-        const temp = new Date(fechaRecibido);
-        while (dias < 10) {
-            temp.setDate(temp.getDate() + 1);
-            const dayOfWeek = temp.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                dias++;
+        if (fechaRecibido && !isNaN(fechaRecibido.getTime())) {
+            let dias = 0;
+            const temp = new Date(fechaRecibido);
+            while (dias < 10) {
+                temp.setDate(temp.getDate() + 1);
+                const dayOfWeek = temp.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    dias++;
+                }
             }
+            fechaMinimaAdicional = obtenerFechaStr(temp);
         }
-        const y = temp.getFullYear();
-        const m = String(temp.getMonth() + 1).padStart(2, '0');
-        const d = String(temp.getDate()).padStart(2, '0');
-        fechaMinimaAdicional = `${y}-${m}-${d}`;
     }
 
     const div = document.createElement('div');
@@ -737,7 +834,7 @@ function agregarEnvioAdicional() {
     fechaElabInput.addEventListener('change', function() {
         const fechaElab = this.value;
         const fechaRec = fechaRecInput.value;
-        if (fechaRec && fechaElab && !compararFechas(fechaElab, fechaRec)) {
+        if (fechaRec && fechaElab && !fechaMenorOIgual(fechaElab, fechaRec)) {
             fechaRecInput.value = '';
             fechaRecInput.style.borderColor = '#8b1a1a';
         } else if (fechaRec && fechaElab) {
@@ -748,10 +845,10 @@ function agregarEnvioAdicional() {
     fechaRecInput.addEventListener('change', function() {
         const fechaRec = this.value;
         const fechaElab = fechaElabInput.value;
-        if (fechaRec && fechaElab && !compararFechas(fechaElab, fechaRec)) {
+        if (fechaRec && fechaElab && !fechaMenorOIgual(fechaElab, fechaRec)) {
             this.value = '';
             this.style.borderColor = '#8b1a1a';
-            alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser anterior a la fecha de elaboración');
         } else if (fechaRec && fechaElab) {
             this.style.borderColor = '';
         }
@@ -770,36 +867,36 @@ async function registrarEnvioAdicional(btn) {
     const hoy = fechaHoy();
 
     if (!descripcion || !oficio || !fechaElaboracion) {
-        alert('Por favor, completa todos los campos obligatorios');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Campos incompletos', 'Por favor, completa todos los campos obligatorios');
         return;
     }
 
     const fechaCreacion = ticketData.fechaCreacion;
     if (fechaCreacion) {
-        const fechaCreacionStr = new Date(fechaCreacion).toISOString().split('T')[0];
-        if (!compararFechas(fechaCreacionStr, fechaElaboracion)) {
-            alert('La fecha de elaboración no puede ser anterior a la fecha de creación del ticket');
+        const fechaCreacionStr = obtenerFechaStr(fechaCreacion);
+        if (fechaCreacionStr && !fechaMenorOIgual(fechaCreacionStr, fechaElaboracion)) {
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Fecha inválida', 'La fecha de elaboración no puede ser anterior a la fecha de creación del ticket');
             return;
         }
     }
 
     if (fechaElaboracion > hoy) {
-        alert('La fecha de elaboración no puede ser futura');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Fecha inválida', 'La fecha de elaboración no puede ser futura');
         return;
     }
 
     if (fechaRecibido) {
         if (fechaRecibido > hoy) {
-            alert('La fecha de recibido no puede ser futura');
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser futura');
             return;
         }
-        if (!compararFechas(fechaElaboracion, fechaRecibido)) {
-            alert('La fecha de recibido no puede ser anterior a la fecha de elaboración');
+        if (!fechaMenorOIgual(fechaElaboracion, fechaRecibido)) {
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser anterior a la fecha de elaboración');
             return;
         }
     }
@@ -827,8 +924,8 @@ async function registrarEnvioAdicional(btn) {
         const enviosActuales = data.enviosDependencia || [];
 
         if (enviosActuales.length === 0) {
-            alert('No existe un envío principal (Paso 2) registrado todavía.');
             ocultarLoading(btn, textoOriginal);
+            mostrarError('Error', 'No existe un envío principal (Paso 2) registrado todavía.');
             return;
         }
 
@@ -847,8 +944,8 @@ async function registrarEnvioAdicional(btn) {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al registrar: ' + error.message);
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Error al registrar', error.message);
     }
 }
 
@@ -903,13 +1000,22 @@ function editarFechaRecibidoAdicional(index) {
     const adicionales = obtenerEnviosAdicionales();
 
     if (index >= adicionales.length) {
-        alert('Envío no encontrado');
+        mostrarError('Error', 'Envío no encontrado');
         return;
     }
 
     const envio = adicionales[index];
     const fechaElaboracion = envio.fechaElaboracion || '';
     const hoy = fechaHoy();
+
+    let minFecha = '';
+    if (fechaElaboracion) {
+        const parsed = parseFechaLocal(fechaElaboracion);
+        if (parsed && !isNaN(parsed.getTime())) {
+            minFecha = obtenerFechaStr(parsed);
+        }
+    }
+    if (!minFecha) minFecha = hoy;
 
     const modal = document.createElement('div');
     modal.id = 'modalFechaRecibidoAdicional';
@@ -925,7 +1031,7 @@ function editarFechaRecibidoAdicional(index) {
             <div class="form-group">
                 <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1a3a5c;">Nueva fecha de recibido <span class="required">*</span></label>
                 <input type="date" id="nuevaFechaRecibidoAdicional" 
-                       min="${fechaElaboracion}" max="${hoy}"
+                       min="${minFecha}" max="${hoy}"
                        style="width: 100%; padding: 10px; border: 2px solid #d0d8e0; border-radius: 6px; font-size: 16px;">
                 <small style="color: #7a8a9a; display: block; margin-top: 4px;">Debe ser igual o posterior a la fecha de elaboración (${formatearFecha(fechaElaboracion)})</small>
             </div>
@@ -943,7 +1049,7 @@ function editarFechaRecibidoAdicional(index) {
         const nuevaFecha = fechaInput.value;
 
         if (!nuevaFecha) {
-            alert('Por favor, selecciona una fecha');
+            mostrarError('Campo incompleto', 'Por favor, selecciona una fecha');
             return;
         }
 
@@ -979,7 +1085,13 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
         const realIndex = index + 1;
 
         if (realIndex >= envios.length || envios[realIndex].tipo !== 'envio_adicional') {
-            alert('Envío no encontrado');
+            mostrarError('Error', 'Envío no encontrado');
+            return;
+        }
+
+        const fechaElaboracion = envios[realIndex].fechaElaboracion;
+        if (fechaElaboracion && !fechaMenorOIgual(fechaElaboracion, nuevaFecha)) {
+            mostrarError('Fecha inválida', 'La fecha de recibido no puede ser anterior a la fecha de elaboración');
             return;
         }
 
@@ -996,7 +1108,7 @@ async function actualizarFechaRecibidoAdicional(index, nuevaFecha) {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al actualizar: ' + error.message);
+        mostrarError('Error al actualizar', error.message);
     }
 }
 
@@ -1026,8 +1138,10 @@ function mostrarRespuestaDependencia() {
         document.getElementById('respuestaDependenciaRegistrada').style.display = 'none';
 
         const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
-        const minFecha = fechaRecibido || '';
+        let minFecha = fechaRecibido ? obtenerFechaStr(fechaRecibido) : '';
         const hoy = fechaHoy();
+
+        if (!minFecha) minFecha = hoy;
 
         document.getElementById('fechaRespuestaDep').setAttribute('min', minFecha);
         document.getElementById('fechaRespuestaDep').setAttribute('max', hoy);
@@ -1068,21 +1182,21 @@ async function registrarRespuestaDependencia() {
     const hoy = fechaHoy();
 
     if (!descripcion || !oficio || !fecha) {
-        alert('Por favor, completa todos los campos');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Campos incompletos', 'Por favor, completa todos los campos');
         return;
     }
 
     if (fecha > hoy) {
-        alert('La fecha de respuesta no puede ser futura');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Fecha inválida', 'La fecha de respuesta no puede ser futura');
         return;
     }
 
     const fechaRecibido = obtenerFechaRecibidoPrimerEnvio();
-    if (fechaRecibido && !compararFechas(fechaRecibido, fecha)) {
-        alert('La fecha de respuesta no puede ser anterior a la fecha de recibido en dependencia');
+    if (fechaRecibido && !fechaMenorOIgual(fechaRecibido, fecha)) {
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Fecha inválida', 'La fecha de respuesta no puede ser anterior a la fecha de recibido en dependencia');
         return;
     }
 
@@ -1117,8 +1231,8 @@ async function registrarRespuestaDependencia() {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al registrar: ' + error.message);
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Error al registrar', error.message);
     }
 }
 
@@ -1131,8 +1245,10 @@ function mostrarRespuestaCiudadano() {
 
         const respuestasDep = ticketData.respuestasDependencia || [];
         const ultimaRespDep = respuestasDep[respuestasDep.length - 1];
-        const minFecha = ultimaRespDep && ultimaRespDep.fechaRespuesta ? ultimaRespDep.fechaRespuesta : '';
+        let minFecha = ultimaRespDep && ultimaRespDep.fechaRespuesta ? obtenerFechaStr(ultimaRespDep.fechaRespuesta) : '';
         const hoy = fechaHoy();
+
+        if (!minFecha) minFecha = hoy;
 
         document.getElementById('fechaRespuestaCiudadano').setAttribute('min', minFecha);
         document.getElementById('fechaRespuestaCiudadano').setAttribute('max', hoy);
@@ -1171,22 +1287,22 @@ async function registrarRespuestaCiudadano() {
     const hoy = fechaHoy();
 
     if (!descripcion || !fecha) {
-        alert('Por favor, completa todos los campos');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Campos incompletos', 'Por favor, completa todos los campos');
         return;
     }
 
     if (fecha > hoy) {
-        alert('La fecha de respuesta no puede ser futura');
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Fecha inválida', 'La fecha de respuesta no puede ser futura');
         return;
     }
 
     const respuestasDep = ticketData.respuestasDependencia || [];
     const ultimaRespDep = respuestasDep[respuestasDep.length - 1];
-    if (ultimaRespDep && ultimaRespDep.fechaRespuesta && !compararFechas(ultimaRespDep.fechaRespuesta, fecha)) {
-        alert('La fecha de respuesta al ciudadano no puede ser anterior a la fecha de respuesta de la dependencia');
+    if (ultimaRespDep && ultimaRespDep.fechaRespuesta && !fechaMenorOIgual(ultimaRespDep.fechaRespuesta, fecha)) {
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Fecha inválida', 'La fecha de respuesta al ciudadano no puede ser anterior a la fecha de respuesta de la dependencia');
         return;
     }
 
@@ -1218,8 +1334,8 @@ async function registrarRespuestaCiudadano() {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al registrar: ' + error.message);
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Error al registrar', error.message);
     }
 }
 
@@ -1227,7 +1343,7 @@ async function registrarRespuestaCiudadano() {
 async function generarReporte() {
     const respuestasCiudadano = ticketData.respuestasCiudadano || [];
     if (respuestasCiudadano.length === 0) {
-        alert('Primero debes registrar la respuesta al ciudadano (Paso 5)');
+        mostrarError('Paso incompleto', 'Primero debes registrar la respuesta al ciudadano (Paso 5)');
         return;
     }
 
@@ -1251,8 +1367,8 @@ async function generarReporte() {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al generar reporte: ' + error.message);
         ocultarLoading(btn, textoOriginal);
+        mostrarError('Error al generar reporte', error.message);
     }
 }
 
@@ -1606,7 +1722,7 @@ function actualizarContadorDias() {
     }
 }
 
-// ============ HISTORIAL (CORREGIDO) ============
+// ============ HISTORIAL ============
 async function agregarHistorial(accion, descripcion) {
     try {
         const historialEntry = {
@@ -1641,7 +1757,6 @@ function cargarHistorial() {
         return;
     }
 
-    // Mostrar en el mismo formato que admin.js
     let html = '';
     historial.forEach(h => {
         const fecha = new Date(h.fecha);

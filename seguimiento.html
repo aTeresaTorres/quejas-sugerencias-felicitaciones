@@ -44,6 +44,7 @@
                     <div class="form-group">
                         <label>Asunto <span class="required">*</span></label>
                         <select id="asuntoTicket">
+                            <option value="pendiente_clasificar">-- Seleccionar asunto --</option>
                             <option value="queja">Queja</option>
                             <option value="sugerencia">Sugerencia</option>
                             <option value="felicitacion">Felicitación</option>
@@ -54,6 +55,7 @@
                     <div class="form-group">
                         <label>Dependencia <span class="required">*</span></label>
                         <select id="dependenciaTicket">
+                            <option value="">-- Seleccionar dependencia --</option>
                             <!-- Se llenará dinámicamente desde Firestore -->
                         </select>
                     </div>
@@ -211,6 +213,20 @@
         <div class="volver-dashboard">
             <button onclick="window.location.href='admin.html'">
                 <i class="fas fa-arrow-left"></i> Regresar al Dashboard de Administrador
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE ERROR (pantalla completa) -->
+    <div id="errorModal" class="error-modal">
+        <div class="error-modal-content">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h2 id="errorTitle">Error</h2>
+            <p id="errorMessage">Ocurrió un error</p>
+            <button onclick="cerrarErrorModal()" class="btn-error-close">
+                <i class="fas fa-times"></i> Cerrar
             </button>
         </div>
     </div>
