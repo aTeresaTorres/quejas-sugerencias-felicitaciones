@@ -130,13 +130,26 @@ async function cargarConfiguracionPublica() {
                 document.getElementById('tituloBuzon').textContent = data.nombreBuzon;
             }
             
-            // Información de contacto
-            if (data.emailContacto) {
-                document.getElementById('infoEmail').textContent = data.emailContacto;
+            // Información de contacto - Múltiples correos y teléfonos
+            const emails = data.emailsContacto || (data.emailContacto ? [data.emailContacto] : ['administracion@tuorganizacion.com']);
+            const telefonos = data.telefonosContacto || (data.telefonoContacto ? [data.telefonoContacto] : ['(55) 1234-5678']);
+            
+            // Mostrar primer correo y teléfono en el lugar principal
+            if (emails.length > 0) {
+                document.getElementById('infoEmail').textContent = emails[0];
+                // Si hay más de un correo, mostrarlos como lista
+                if (emails.length > 1) {
+                    document.getElementById('infoEmail').textContent = emails.join(' / ');
+                }
             }
-            if (data.telefonoContacto) {
-                document.getElementById('infoTelefono').textContent = data.telefonoContacto;
+            
+            if (telefonos.length > 0) {
+                document.getElementById('infoTelefono').textContent = telefonos[0];
+                if (telefonos.length > 1) {
+                    document.getElementById('infoTelefono').textContent = telefonos.join(' / ');
+                }
             }
+            
             if (data.horarioAtencion) {
                 document.getElementById('infoHorario').textContent = data.horarioAtencion;
             }

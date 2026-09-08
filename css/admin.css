@@ -85,9 +85,33 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
+    flex: 1;
 }
 
 .sidebar-header h2 span {
+    color: var(--primary);
+}
+
+.sidebar-header .btn-config-sidebar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.sidebar-header .btn-config-sidebar:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
     color: var(--primary);
 }
 
@@ -284,6 +308,38 @@ body {
     flex: 1;
 }
 
+/* ============ BOTÓN LIMPIAR FILTROS ============ */
+.filtros-acciones {
+    margin-top: 16px;
+}
+
+.btn-filtro-limpiar {
+    width: 100%;
+    padding: 10px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: white;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-filtro-limpiar:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-filtro-limpiar i {
+    font-size: 0.9rem;
+}
+
 /* ============ CONTENIDO PRINCIPAL ============ */
 .main-content {
     flex: 1;
@@ -345,7 +401,7 @@ body {
 /* ============ ESTADÍSTICAS ============ */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 10px;
     margin-bottom: 20px;
 }
@@ -386,6 +442,7 @@ body {
 .stat-card.proceso .stat-number { color: var(--primary-mid); }
 .stat-card.vencidos .stat-number { color: var(--danger); }
 .stat-card.resueltos .stat-number { color: var(--success); }
+.stat-card.cerrados .stat-number { color: var(--text-muted); }
 
 /* Stats secundarias (dependencia y asunto) */
 .stats-secundarias {
@@ -531,6 +588,27 @@ body {
     font-size: 0.8rem;
     color: var(--text-muted);
     font-weight: normal;
+}
+
+.btn-exportar-csv {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-exportar-csv:hover {
+    background: #1a6b3a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 125, 70, 0.25);
 }
 
 .table-responsive {
@@ -751,7 +829,7 @@ tr:hover td {
 /* ============ RESPONSIVE ============ */
 @media (max-width: 1200px) {
     .stats-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 
@@ -842,27 +920,4 @@ tr:hover td {
     .main-content {
         padding: 10px 12px;
     }
-}
-
-/* ============ BOTÓN CONFIGURACIÓN ============ */
-.header-actions .btn-configuracion {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: none;
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: var(--transition);
-    text-decoration: none;
-}
-
-.header-actions .btn-configuracion:hover {
-    background: var(--primary-light);
-    border-color: var(--primary);
-    color: var(--primary);
 }

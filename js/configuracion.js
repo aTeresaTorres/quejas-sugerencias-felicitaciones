@@ -1,6 +1,5 @@
 // ============ VARIABLES GLOBALES ============
 let dependenciasList = [];
-let adminsList = [];
 let confirmCallback = null;
 
 // ============ VERIFICAR AUTENTICACIÓN ============
@@ -9,7 +8,6 @@ auth.onAuthStateChanged(user => {
         document.getElementById('userEmailConfig').textContent = user.email;
         cargarConfiguracion();
         cargarDependencias();
-        cargarAdministradores();
     } else {
         window.location.href = 'login.html';
     }
@@ -26,7 +24,6 @@ document.getElementById('btnLogoutConfig').addEventListener('click', () => {
 document.getElementById('btnRecargarConfig').addEventListener('click', () => {
     cargarConfiguracion();
     cargarDependencias();
-    cargarAdministradores();
 });
 
 // ============ NAVEGACIÓN POR TABS ============
@@ -43,6 +40,77 @@ document.querySelectorAll('.nav-item').forEach(item => {
     });
 });
 
+// ============ FUNCIONES DE CONTACTOS MÚLTIPLES ============
+function agregarContacto(containerId, claseInput, placeholder) {
+    const container = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.className = 'contact-item';
+    div.innerHTML = `
+        <input type="${claseInput === 'email-contacto' ? 'email' : 'tel'}" 
+               class="${claseInput}" 
+               placeholder="${placeholder}">
+        <button type="button" class="btn-remove-contact" onclick="removerContacto(this, '${containerId}')">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function removerContacto(btn, containerId) {
+    const container = document.getElementById(containerId);
+    const items = container.querySelectorAll('.contact-item');
+    if (items.length <= 1) {
+        mostrarError('No se puede eliminar', 'Debe haber al menos un contacto en esta sección');
+        return;
+    }
+    btn.closest('.contact-item').remove();
+}
+
+function obtenerValoresContactos(containerId, claseInput) {
+    const container = document.getElementById(containerId);
+    const inputs = container.querySelectorAll('.' + claseInput);
+    const valores = [];
+    inputs.forEach(input => {
+        const val = input.value.trim();
+        if (val) valores.push(val);
+    });
+    return valores;
+}
+
+function cargarValoresContactos(containerId, claseInput, valores) {
+    const container = document.getElementById(containerId);
+    // Limpiar excepto el primero
+    const items = container.querySelectorAll('.contact-item');
+    if (items.length > 1) {
+        items.forEach((item, index) => {
+            if (index > 0) item.remove();
+        });
+    }
+    
+    // Cargar valores
+    const primerInput = container.querySelector('.' + claseInput);
+    if (primerInput) {
+        primerInput.value = valores && valores.length > 0 ? valores[0] : '';
+    }
+    
+    // Agregar los demás
+    if (valores && valores.length > 1) {
+        for (let i = 1; i < valores.length; i++) {
+            const div = document.createElement('div');
+            div.className = 'contact-item';
+            const tipo = claseInput === 'email-contacto' ? 'email' : 'tel';
+            const placeholder = claseInput === 'email-contacto' ? 'Correo electrónico' : 'Teléfono';
+            div.innerHTML = `
+                <input type="${tipo}" class="${claseInput}" value="${valores[i]}" placeholder="${placeholder}">
+                <button type="button" class="btn-remove-contact" onclick="removerContacto(this, '${containerId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+    }
+}
+
 // ============ CARGAR CONFIGURACIÓN ============
 async function cargarConfiguracion() {
     try {
@@ -56,9 +124,13 @@ async function cargarConfiguracion() {
             document.getElementById('tituloAdmin').value = data.tituloAdmin || '';
             document.getElementById('descripcionBuzon').value = data.descripcionBuzon || '';
             
-            // Contacto
-            document.getElementById('emailContacto').value = data.emailContacto || '';
-            document.getElementById('telefonoContacto').value = data.telefonoContacto || '';
+            // Contacto - Múltiples correos y teléfonos
+            const emails = data.emailsContacto || (data.emailContacto ? [data.emailContacto] : ['']);
+            const telefonos = data.telefonosContacto || (data.telefonoContacto ? [data.telefonoContacto] : ['']);
+            
+            cargarValoresContactos('emailsContainer', 'email-contacto', emails);
+            cargarValoresContactos('telefonosContainer', 'telefono-contacto', telefonos);
+            
             document.getElementById('horarioAtencion').value = data.horarioAtencion || '';
             document.getElementById('direccionContacto').value = data.direccionContacto || '';
         }
@@ -113,9 +185,41 @@ document.getElementById('formConfigContacto').addEventListener('submit', async f
     btn.disabled = true;
     
     try {
+        // Obtener todos los correos y teléfonos
+        const emails = obtenerValoresContactos('emailsContainer', 'email-contacto');
+        const telefonos = obtenerValoresContactos('telefonosContainer', 'telefono-contacto');
+        
+        if (emails.length === 0) {
+            mostrarError('Campo incompleto', 'Debe haber al menos un correo de contacto');
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+            return;
+        }
+        
+        if (telefonos.length === 0) {
+            mostrarError('Campo incompleto', 'Debe haber al menos un teléfono de contacto');
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+            return;
+        }
+        
+        // Validar emails
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        for (const email of emails) {
+            if (!emailRegex.test(email)) {
+                mostrarError('Email inválido', `"${email}" no es un correo válido`);
+                btn.textContent = textoOriginal;
+                btn.disabled = false;
+                return;
+            }
+        }
+        
         const data = {
-            emailContacto: document.getElementById('emailContacto').value.trim(),
-            telefonoContacto: document.getElementById('telefonoContacto').value.trim(),
+            emailsContacto: emails,
+            telefonosContacto: telefonos,
+            // Mantener compatibilidad con versiones anteriores
+            emailContacto: emails[0] || '',
+            telefonoContacto: telefonos[0] || '',
             horarioAtencion: document.getElementById('horarioAtencion').value.trim(),
             direccionContacto: document.getElementById('direccionContacto').value.trim(),
             actualizadoEn: new Date().toISOString(),
@@ -176,9 +280,6 @@ function renderDependencias() {
                 <div class="dep-actions">
                     <button class="btn-edit" onclick="editarDependencia('${dep.id}')">
                         <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn-delete" onclick="eliminarDependencia('${dep.id}')">
-                        <i class="fas fa-trash"></i> Eliminar
                     </button>
                 </div>
             </div>
@@ -259,241 +360,17 @@ document.getElementById('formDependencia').addEventListener('submit', async func
     }
 });
 
-// ============ ELIMINAR DEPENDENCIA ============
-function eliminarDependencia(id) {
-    const dep = dependenciasList.find(d => d.id === id);
-    if (!dep) return;
-    
-    mostrarConfirmacion(
-        'Eliminar dependencia',
-        'Estás a punto de eliminar la dependencia "' + dep.nombre + '". Esta acción no se puede deshacer.',
-        async function() {
-            try {
-                await db.collection('dependencias').doc(id).delete();
-                mostrarExito('Dependencia eliminada correctamente');
-                cargarDependencias();
-            } catch (error) {
-                console.error('Error al eliminar:', error);
-                mostrarError('Error al eliminar', error.message);
-            }
-        }
-    );
-}
-
-// ============ CARGAR ADMINISTRADORES ============
-async function cargarAdministradores() {
-    const container = document.getElementById('administradoresList');
-    container.innerHTML = '<p style="color: var(--text-muted); padding: 15px 0;">Cargando administradores...</p>';
-    
-    try {
-        const snapshot = await db.collection('administradores').orderBy('email').get();
-        adminsList = [];
-        snapshot.forEach(doc => {
-            adminsList.push({ id: doc.id, ...doc.data() });
-        });
-        
-        renderAdministradores();
-    } catch (error) {
-        console.error('Error al cargar administradores:', error);
-        container.innerHTML = '<p style="color: var(--text-muted); padding: 15px 0;">No se pudieron cargar los administradores</p>';
-    }
-}
-
-function renderAdministradores() {
-    const container = document.getElementById('administradoresList');
-    const userActual = auth.currentUser;
-    
-    if (adminsList.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); padding: 15px 0;">No hay administradores registrados</p>';
-        return;
-    }
-    
-    let html = '';
-    adminsList.forEach(admin => {
-        const esActual = admin.email === userActual.email;
-        html += `
-            <div class="admin-item">
-                <span class="admin-email ${esActual ? 'actual' : ''}">
-                    ${esActual ? '<i class="fas fa-star"></i>' : '<i class="fas fa-user-check"></i>'}
-                    ${admin.email}
-                    ${esActual ? ' <span style="font-size: 0.7rem; color: var(--text-muted);">(tú)</span>' : ''}
-                </span>
-                ${!esActual ? `<button class="btn-remove-admin" onclick="eliminarAdministrador('${admin.id}')">Eliminar</button>` : ''}
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
-}
-
-// ============ AGREGAR ADMINISTRADOR ============
-document.getElementById('btnAgregarAdmin').addEventListener('click', async function() {
-    const email = document.getElementById('emailNuevoAdmin').value.trim();
-    
-    if (!email) {
-        mostrarError('Campo incompleto', 'Ingresa un correo electrónico');
-        return;
-    }
-    
-    if (!validarEmail(email)) {
-        mostrarError('Email inválido', 'Ingresa un correo electrónico válido');
-        return;
-    }
-    
-    // Verificar si ya existe
-    if (adminsList.some(a => a.email === email)) {
-        mostrarError('Ya existe', 'Este usuario ya es administrador');
-        return;
-    }
-    
-    try {
-        await db.collection('administradores').add({
-            email: email,
-            agregadoEn: new Date().toISOString(),
-            agregadoPor: auth.currentUser.email
-        });
-        
-        document.getElementById('emailNuevoAdmin').value = '';
-        mostrarExito('Administrador agregado correctamente');
-        cargarAdministradores();
-        
-    } catch (error) {
-        console.error('Error al agregar administrador:', error);
-        mostrarError('Error al agregar', error.message);
-    }
-});
-
-// ============ ELIMINAR ADMINISTRADOR ============
-function eliminarAdministrador(id) {
-    const admin = adminsList.find(a => a.id === id);
-    if (!admin) return;
-    
-    mostrarConfirmacion(
-        'Eliminar administrador',
-        'Estás a punto de eliminar al administrador "' + admin.email + '". Esta acción no se puede deshacer.',
-        async function() {
-            try {
-                await db.collection('administradores').doc(id).delete();
-                mostrarExito('Administrador eliminado correctamente');
-                cargarAdministradores();
-            } catch (error) {
-                console.error('Error al eliminar:', error);
-                mostrarError('Error al eliminar', error.message);
-            }
-        }
-    );
-}
-
-// ============ CAMBIAR CONTRASEÑA ============
-document.getElementById('btnCambiarPassword').addEventListener('click', () => {
-    document.getElementById('modalCambiarPassword').style.display = 'block';
-    document.getElementById('passActual').value = '';
-    document.getElementById('passNueva').value = '';
-    document.getElementById('passConfirmar').value = '';
-});
-
-document.getElementById('formCambiarPassword').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const btn = this.querySelector('button[type="submit"]');
-    const textoOriginal = btn.textContent;
-    btn.textContent = 'Cambiando...';
-    btn.disabled = true;
-    
-    const actual = document.getElementById('passActual').value;
-    const nueva = document.getElementById('passNueva').value;
-    const confirmar = document.getElementById('passConfirmar').value;
-    
-    if (!actual || !nueva || !confirmar) {
-        mostrarError('Campos incompletos', 'Todos los campos son obligatorios');
-        btn.textContent = textoOriginal;
-        btn.disabled = false;
-        return;
-    }
-    
-    if (nueva.length < 6) {
-        mostrarError('Contraseña débil', 'La nueva contraseña debe tener al menos 6 caracteres');
-        btn.textContent = textoOriginal;
-        btn.disabled = false;
-        return;
-    }
-    
-    if (nueva !== confirmar) {
-        mostrarError('Contraseñas no coinciden', 'Las contraseñas no coinciden');
-        btn.textContent = textoOriginal;
-        btn.disabled = false;
-        return;
-    }
-    
-    try {
-        const user = auth.currentUser;
-        const credential = firebase.auth.EmailAuthProvider.credential(user.email, actual);
-        
-        await user.reauthenticateWithCredential(credential);
-        await user.updatePassword(nueva);
-        
-        document.getElementById('modalCambiarPassword').style.display = 'none';
-        mostrarExito('Contraseña cambiada correctamente');
-        
-    } catch (error) {
-        console.error('Error al cambiar contraseña:', error);
-        let mensaje = error.message;
-        if (error.code === 'auth/wrong-password') {
-            mensaje = 'La contraseña actual es incorrecta';
-        } else if (error.code === 'auth/too-many-requests') {
-            mensaje = 'Demasiados intentos fallidos. Espera unos minutos.';
-        }
-        mostrarError('Error al cambiar contraseña', mensaje);
-    } finally {
-        btn.textContent = textoOriginal;
-        btn.disabled = false;
-    }
-});
-
-// ============ LIMPIAR CACHÉ ============
-document.getElementById('btnLimpiarCache').addEventListener('click', () => {
-    mostrarConfirmacion(
-        'Limpiar caché local',
-        'Se eliminarán los datos almacenados localmente en tu navegador. ¿Continuar?',
-        function() {
-            try {
-                localStorage.clear();
-                sessionStorage.clear();
-                if (window.indexedDB) {
-                    indexedDB.databases().then(dbs => {
-                        dbs.forEach(db => {
-                            indexedDB.deleteDatabase(db.name);
-                        });
-                    }).catch(() => {});
-                }
-                mostrarExito('Caché local limpiada correctamente');
-            } catch (error) {
-                console.error('Error al limpiar caché:', error);
-                mostrarError('Error al limpiar caché', error.message);
-            }
-        }
-    );
-});
-
 // ============ FUNCIONES DE MODAL ============
-// Cerrar modal de dependencia
 document.getElementById('closeModalDep').addEventListener('click', () => {
     document.getElementById('modalDependencia').style.display = 'none';
 });
 
-// Cerrar modal de contraseña
-document.getElementById('closeModalPass').addEventListener('click', () => {
-    document.getElementById('modalCambiarPassword').style.display = 'none';
-});
-
-// Cerrar modales al hacer clic fuera
 window.addEventListener('click', function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.style.display = 'none';
     }
 });
 
-// Cerrar con Escape
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
@@ -561,11 +438,6 @@ function mostrarExito(mensaje) {
         toast.style.transition = 'opacity 0.5s ease';
         setTimeout(() => toast.remove(), 500);
     }, 3000);
-}
-
-// ============ VALIDACIÓN DE EMAIL ============
-function validarEmail(email) {
-    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
 }
 
 console.log('configuracion.js cargado correctamente');

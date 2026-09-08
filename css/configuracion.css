@@ -796,3 +796,70 @@ body {
         padding: 12px 14px;
     }
 }
+
+/* ============ CONTACTOS MÚLTIPLES ============ */
+.contact-item {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.contact-item input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    font-family: inherit;
+    background: white;
+}
+
+.contact-item input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 58, 92, 0.08);
+}
+
+.contact-item .btn-remove-contact {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.contact-item .btn-remove-contact:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-add-contact {
+    background: none;
+    border: 2px dashed var(--border);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-add-contact:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}

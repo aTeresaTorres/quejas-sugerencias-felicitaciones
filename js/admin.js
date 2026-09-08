@@ -6,6 +6,17 @@ let ticketsNuevos = new Set();
 let todosLosTickets = [];
 let dependenciasList = [];
 
+// ============ VERIFICAR AUTENTICACIÓN ============
+auth.onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById('userEmailText').textContent = user.email;
+        cargarConfiguracionAdmin();
+        cargarDependencias().then(() => cargarTodosLosTickets());
+    } else {
+        window.location.href = 'login.html';
+    }
+});
+
 // ============ CARGAR CONFIGURACIÓN PARA EL TÍTULO ============
 async function cargarConfiguracionAdmin() {
     try {
@@ -18,27 +29,6 @@ async function cargarConfiguracionAdmin() {
         console.error('Error al cargar configuración admin:', error);
     }
 }
-
-// Llamar después de autenticar
-auth.onAuthStateChanged(user => {
-    if (user) {
-        document.getElementById('userEmailText').textContent = user.email;
-        cargarConfiguracionAdmin();
-        cargarDependencias().then(() => cargarTodosLosTickets());
-    } else {
-        window.location.href = 'login.html';
-    }
-});
-
-// ============ VERIFICAR AUTENTICACIÓN ============
-auth.onAuthStateChanged(user => {
-    if (user) {
-        document.getElementById('userEmailText').textContent = user.email;
-        cargarDependencias().then(() => cargarTodosLosTickets());
-    } else {
-        window.location.href = 'login.html';
-    }
-});
 
 // ============ CARGAR DEPENDENCIAS DESDE FIRESTORE ============
 async function cargarDependencias() {
@@ -140,6 +130,99 @@ document.getElementById('btnLimpiarBusqueda').addEventListener('click', () => {
     document.getElementById('busquedaGlobal').value = '';
     aplicarFiltrosYBusqueda();
 });
+
+// ============ EXPORTAR CSV ============
+document.getElementById('btnExportarCSV').addEventListener('click', function() {
+    exportarCSV(tickets);
+});
+
+function exportarCSV(ticketsData) {
+    if (ticketsData.length === 0) {
+        alert('No hay tickets para exportar');
+        return;
+    }
+
+    // Definir columnas
+    const columnas = [
+        'Folio',
+        'Nombre',
+        'Contacto',
+        'Email',
+        'Teléfono',
+        'Asunto',
+        'Dependencia',
+        'Estado',
+        'Fecha creación',
+        'Mensaje'
+    ];
+
+    // Crear contenido CSV
+    let csvContent = '\uFEFF'; // BOM para UTF-8
+    csvContent += columnas.join(',') + '\n';
+
+    ticketsData.forEach(t => {
+        const asuntoLabel = {
+            'queja': 'Queja',
+            'sugerencia': 'Sugerencia',
+            'felicitacion': 'Felicitación',
+            'pendiente_clasificar': 'Por clasificar',
+            'no_procede': 'No procede',
+            'otros': 'Otros'
+        }[t.asunto] || t.asunto || 'Sin clasificar';
+
+        const depNombre = dependenciasList.find(d => d.id === t.dependencia)?.nombre || t.dependencia || 'Sin asignar';
+
+        const estadoLabel = {
+            'pendiente': 'Pendiente',
+            'en_revision': 'En revisión',
+            'en_proceso': 'En proceso',
+            'vencido': 'Vencido',
+            'resuelto': 'Resuelto',
+            'cerrado': 'Cerrado'
+        }[t.estado] || t.estado || 'Pendiente';
+
+        let contacto = t.contacto || '';
+        if (t.email && t.telefono) {
+            contacto = t.email + ' / ' + t.telefono;
+        } else if (t.email) {
+            contacto = t.email;
+        } else if (t.telefono) {
+            contacto = t.telefono;
+        }
+
+        const fecha = t.fechaCreacion ? new Date(t.fechaCreacion).toLocaleDateString('es-MX') : 'N/A';
+        
+        // Escapar comillas en mensaje
+        const mensaje = (t.mensaje || '').replace(/"/g, '""');
+
+        const fila = [
+            t.folio || '',
+            (t.nombre || '').replace(/"/g, '""'),
+            contacto.replace(/"/g, '""'),
+            (t.email || '').replace(/"/g, '""'),
+            (t.telefono || '').replace(/"/g, '""'),
+            asuntoLabel,
+            depNombre.replace(/"/g, '""'),
+            estadoLabel,
+            fecha,
+            mensaje
+        ];
+
+        csvContent += fila.map(val => `"${val}"`).join(',') + '\n';
+    });
+
+    // Crear y descargar el archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    const fecha = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `tickets_${fecha}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
 // ============ TOGGLE PARA ACORDEÓN ============
 function toggleFiltro(id) {
@@ -883,7 +966,8 @@ function actualizarEstadisticas(ticketsFiltrados) {
     const enRevision = ticketsFiltrados.filter(t => t.estado === 'en_revision').length;
     const enProceso = ticketsFiltrados.filter(t => t.estado === 'en_proceso').length;
     const vencidos = ticketsFiltrados.filter(t => t.estado === 'vencido').length;
-    const resueltos = ticketsFiltrados.filter(t => t.estado === 'resuelto' || t.estado === 'cerrado').length;
+    const resueltos = ticketsFiltrados.filter(t => t.estado === 'resuelto').length;
+    const cerrados = ticketsFiltrados.filter(t => t.estado === 'cerrado').length;
 
     document.getElementById('totalTickets').textContent = total;
     document.getElementById('pendientes').textContent = pendientes;
@@ -891,6 +975,7 @@ function actualizarEstadisticas(ticketsFiltrados) {
     document.getElementById('enProceso').textContent = enProceso;
     document.getElementById('vencidos').textContent = vencidos;
     document.getElementById('resueltos').textContent = resueltos;
+    document.getElementById('cerrados').textContent = cerrados;
 
     // Dependencias
     const dependencias = {};
@@ -975,4 +1060,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-console.log('✅ admin.js cargado correctamente');
+console.log('admin.js cargado correctamente');
